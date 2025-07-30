@@ -43,15 +43,23 @@ def read_indicador(indicador_id: int, db: Session = Depends(get_db)):
     if indicador is None:
         raise HTTPException(status_code=404, detail="Indicador de desempenho não encontrado")
     
-    # Buscar dados relacionados
-    recursos_hidricos = crud.get_recursos_hidricos_by_indicador(db, indicador_id)
-    financeiro = crud.get_financeiro_by_indicador(db, indicador_id)
-    
-    # Criar resposta completa
+    # Os dados relacionados já foram carregados via joinedload na função get_indicador
+    # Apenas precisamos criar a resposta usando os dados já carregados
     indicador_completo = schemas.IndicadoresCompleto(
-        **indicador.__dict__,
-        recursos_hidricos=recursos_hidricos,
-        financeiro=financeiro
+        id=indicador.id,
+        ano=indicador.ano,
+        municipio_id=indicador.municipio_id,
+        prestador_id=indicador.prestador_id,
+        populacao_atendida_agua=indicador.populacao_atendida_agua,
+        populacao_atendida_esgoto=indicador.populacao_atendida_esgoto,
+        indice_atendimento_agua=indicador.indice_atendimento_agua,
+        indice_coleta_esgoto=indicador.indice_coleta_esgoto,
+        indice_tratamento_esgoto=indicador.indice_tratamento_esgoto,
+        indice_perda_faturamento=indicador.indice_perda_faturamento,
+        municipio=indicador.municipio,
+        prestador=indicador.prestador,
+        recursos_hidricos=indicador.recursos_hidricos,
+        financeiro=indicador.financeiro
     )
     
     return indicador_completo

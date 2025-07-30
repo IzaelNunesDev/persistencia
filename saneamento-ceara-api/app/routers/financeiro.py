@@ -143,15 +143,19 @@ def get_sustentabilidade_financeira(ano: int, db: Session = Depends(get_db)):
     """
     from sqlalchemy import func
     
-    # Buscar dados financeiros do ano
+    # Buscar dados financeiros do ano com JOINs explícitos
     query = db.query(
         crud.models.FinanceiroAnual,
         crud.models.IndicadoresDesempenhoAnual,
         crud.models.Municipio
+    ).select_from(
+        crud.models.FinanceiroAnual
     ).join(
-        crud.models.IndicadoresDesempenhoAnual
+        crud.models.IndicadoresDesempenhoAnual,
+        crud.models.FinanceiroAnual.indicador_id == crud.models.IndicadoresDesempenhoAnual.id
     ).join(
-        crud.models.Municipio
+        crud.models.Municipio,
+        crud.models.IndicadoresDesempenhoAnual.municipio_id == crud.models.Municipio.id_municipio
     ).filter(
         crud.models.IndicadoresDesempenhoAnual.ano == ano,
         crud.models.FinanceiroAnual.receita_operacional_total.isnot(None),
