@@ -5,7 +5,7 @@ services:
     plan: free
     rootDir: saneamento-ceara-api
     buildCommand: pip install -r requirements.txt
-    startCommand: ./start.sh
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
@@ -17,8 +17,6 @@ services:
         value: production
       - key: LOG_LEVEL
         value: INFO
-      - key: PORT
-        value: 8000
 
 databases:
   - name: saneamento-ceara-db

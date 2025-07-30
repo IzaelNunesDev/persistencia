@@ -18,6 +18,6 @@ echo "🌐 Usando porta: $PORT"
 echo "📊 Executando migrações do banco de dados..."
 alembic upgrade head
 
-# Iniciar a aplicação
+# Iniciar a aplicação com uvicorn diretamente
 echo "🌐 Iniciando servidor na porta $PORT..."
-exec gunicorn app.main:app -c gunicorn.conf.py 
+exec uvicorn app.main:app --host 0.0.0.0 --port $PORT 
