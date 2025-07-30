@@ -43,7 +43,7 @@ const utils = {
     },
     
     // Fazer requisição à API
-    async fetchAPI: async (endpoint, options = {}) => {
+    fetchAPI: async (endpoint, options = {}) => {
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 headers: {
@@ -53,10 +53,14 @@ const utils = {
                 ...options
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            // CORREÇÃO: Lidar com 404
+            if (response.status === 404) {
+                return null; // Retorna null para que a função que chamou saiba que não há dados
             }
-            
+
+            if (!response.ok) {
+                throw new Error(`Erro HTTP! Status: ${response.status}`);
+            }
             return await response.json();
         } catch (error) {
             console.error('Erro na requisição à API:', error);
@@ -213,6 +217,37 @@ const DataManager = {
             console.error('Erro ao carregar evolução do município:', error);
             throw error;
         }
+    },
+    
+    // CORREÇÃO: Adicionar funções para carregar dados específicos de município
+    async loadIndicadoresAtuais(municipioId) {
+        try {
+            const data = await utils.fetchAPI(`/municipios/${municipioId}/indicadores-atuais`);
+            return data;
+        } catch (error) {
+            console.error('Erro ao carregar indicadores atuais:', error);
+            throw error;
+        }
+    },
+    
+    async loadRecursosHidricos(municipioId) {
+        try {
+            const data = await utils.fetchAPI(`/municipios/${municipioId}/recursos-hidricos`);
+            return data;
+        } catch (error) {
+            console.error('Erro ao carregar recursos hídricos:', error);
+            throw error;
+        }
+    },
+    
+    async loadIndicadoresFinanceiros(municipioId) {
+        try {
+            const data = await utils.fetchAPI(`/municipios/${municipioId}/indicadores-financeiros`);
+            return data;
+        } catch (error) {
+            console.error('Erro ao carregar indicadores financeiros:', error);
+            throw error;
+        }
     }
 };
 
@@ -243,6 +278,47 @@ const UIManager = {
                 </div>
             </div>
         `;
+    },
+    
+    // CORREÇÃO: Adicionar função para carregar página de município com tratamento de erros
+    async carregarPaginaMunicipio(municipioId) {
+        try {
+            // Carregar indicadores atuais
+            const indicadores = await DataManager.loadIndicadoresAtuais(municipioId);
+            if (indicadores) {
+                this.renderIndicadores(indicadores);
+            } else {
+                utils.showError('indicadores-atuais-container', 'Nenhum indicador recente encontrado.');
+            }
+
+            // Carregar recursos hídricos
+            const recursos = await DataManager.loadRecursosHidricos(municipioId);
+            if (recursos) {
+                this.renderGraficoRecursos(recursos);
+            } else {
+                utils.showError('recursos-hidricos-chart-container', 'Nenhum dado de recursos hídricos encontrado.');
+            }
+
+            // Carregar indicadores financeiros
+            const financeiros = await DataManager.loadIndicadoresFinanceiros(municipioId);
+            if (financeiros) {
+                this.renderIndicadoresFinanceiros(financeiros);
+            } else {
+                utils.showError('indicadores-financeiros-container', 'Nenhum dado financeiro encontrado.');
+            }
+
+            // Carregar evolução temporal
+            const evolucao = await DataManager.loadMunicipioEvolucao(municipioId);
+            if (evolucao) {
+                this.renderEvolucaoTemporal(evolucao);
+            } else {
+                utils.showError('evolucao-temporal-container', 'Nenhum dado de evolução temporal encontrado.');
+            }
+
+        } catch (error) {
+            console.error('Erro ao carregar dados do município:', error);
+            utils.showError('municipio-container', 'Erro ao carregar dados do município.');
+        }
     },
     
     // Atualizar ranking

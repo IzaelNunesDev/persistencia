@@ -154,6 +154,8 @@ def get_ranking_indicador(
     """
     Retorna ranking de municípios por indicador específico
     """
+    import math  # Importar math para verificar NaN
+    
     # Mapear nome do indicador para coluna
     indicador_map = {
         "indice_atendimento_agua": models.IndicadoresDesempenhoAnual.indice_atendimento_agua,
@@ -177,22 +179,50 @@ def get_ranking_indicador(
     ).order_by(order_func(coluna))
     
     if municipio_id:
-        # Buscar posição específica do município
-        municipio_data = query.filter(
-            models.IndicadoresDesempenhoAnual.municipio_id == municipio_id
-        ).first()
+        # CORREÇÃO: Em vez de retornar um formato diferente,
+        # vamos encontrar a posição e ainda retornar o ranking completo.
+        # Isso é mais útil para o frontend de qualquer maneira.
+
+        # Primeiro, pegamos o ranking completo sem limite
+        todos_os_resultados = query.all()
         
-        if not municipio_data:
-            return {"posicao": None, "total": 0, "valor": None}
+        posicao_municipio = None
+        valor_municipio = None
         
-        # Contar posição
-        posicao = query.filter(order_func(coluna) > order_func(municipio_data[0].__getattribute__(indicador))).count() + 1
-        total = query.count()
+        # Montar ranking e encontrar o município alvo
+        ranking = []
+        for i, (indicador_obj, municipio_obj) in enumerate(todos_os_resultados, 1):
+            valor = indicador_obj.__getattribute__(indicador)
+            valor_limpo = None if valor is None or math.isnan(valor) else float(valor)
+            
+            # Adicionar ao ranking geral (os 10 primeiros)
+            if i <= limit:
+                ranking.append({
+                    "posicao": i,
+                    "municipio": {
+                        "id_municipio": municipio_obj.id_municipio,
+                        "nome": municipio_obj.nome,
+                        "sigla_uf": municipio_obj.sigla_uf
+                    },
+                    "valor": valor_limpo
+                })
+
+            # Verificar se é o município que estamos procurando
+            if municipio_obj.id_municipio == municipio_id:
+                posicao_municipio = i
+                valor_municipio = valor_limpo
         
+        # Retornar o ranking e a posição do município específico
         return {
-            "posicao": posicao,
-            "total": total,
-            "valor": municipio_data[0].__getattribute__(indicador)
+            "ano": ano,
+            "indicador": indicador,
+            "ranking": ranking,  # Retorna o Top 10
+            "posicao_especifica": {  # Adiciona uma chave extra com a info
+                "municipio_id": municipio_id,
+                "posicao": posicao_municipio,
+                "total": len(todos_os_resultados),
+                "valor": valor_municipio
+            }
         }
     
     # Retornar ranking completo
@@ -201,11 +231,12 @@ def get_ranking_indicador(
     ranking = []
     for i, (indicador_obj, municipio) in enumerate(resultados, 1):
         valor = indicador_obj.__getattribute__(indicador)
-        # Tratar valores None e NaN
-        if valor is None or (hasattr(valor, 'isnan') and valor.isnan()):
-            valor = None
+        
+        # CORREÇÃO: Tratar NaN e None antes de adicionar
+        if valor is None or math.isnan(valor):
+            valor_limpo = None  # JSON suporta 'null'
         else:
-            valor = float(valor)
+            valor_limpo = float(valor)
         
         ranking.append({
             "posicao": i,
@@ -214,7 +245,7 @@ def get_ranking_indicador(
                 "nome": municipio.nome,
                 "sigla_uf": municipio.sigla_uf
             },
-            "valor": valor
+            "valor": valor_limpo  # Usar o valor limpo
         })
     
     return {
@@ -231,6 +262,8 @@ def get_evolucao_indicadores(
     """
     Retorna evolução temporal dos indicadores de um município
     """
+    import math
+    
     if indicadores is None:
         indicadores = ["indice_atendimento_agua", "indice_coleta_esgoto", "indice_tratamento_esgoto"]
     
@@ -244,7 +277,12 @@ def get_evolucao_indicadores(
     for dado in dados:
         item = {"ano": dado.ano}
         for indicador in indicadores:
-            item[indicador] = getattr(dado, indicador)
+            valor = getattr(dado, indicador)
+            # CORREÇÃO: Tratar valores None e NaN
+            if valor is None or math.isnan(valor):
+                item[indicador] = None
+            else:
+                item[indicador] = float(valor)
         evolucao.append(item)
     
     return {
@@ -312,7 +350,7 @@ def get_evolucao_temporal(db: Session) -> dict:
     for dado in dados:
         anos.append(dado.ano)
         
-        # Tratar valores None e NaN
+        # CORREÇÃO: Tratar valores None e NaN de forma mais robusta
         agua_val = dado.agua
         if agua_val is None or math.isnan(agua_val):
             agua.append(None)
@@ -367,6 +405,8 @@ def get_analise_sustentabilidade_financeira(db: Session, ano: int) -> dict:
     """
     Retorna análise de sustentabilidade financeira
     """
+    import math
+    
     dados = db.query(
         models.IndicadoresDesempenhoAnual,
         models.Municipio,
@@ -381,8 +421,19 @@ def get_analise_sustentabilidade_financeira(db: Session, ano: int) -> dict:
     
     for indicadores, municipio, financeiro in dados:
         if financeiro:
-            receita = financeiro.receita_operacional_total or 0
-            despesa = financeiro.despesa_total_servicos or 0
+            # CORREÇÃO: Tratar valores None e NaN
+            receita = financeiro.receita_operacional_total
+            if receita is None or math.isnan(receita):
+                receita = 0
+            else:
+                receita = float(receita)
+            
+            despesa = financeiro.despesa_total_servicos
+            if despesa is None or math.isnan(despesa):
+                despesa = 0
+            else:
+                despesa = float(despesa)
+            
             saldo = receita - despesa
             sustentavel = saldo > 0
             
@@ -409,6 +460,8 @@ def get_analise_eficiencia_hidrica(db: Session, ano: int) -> dict:
     """
     Retorna análise de eficiência hídrica
     """
+    import math
+    
     dados = db.query(
         models.IndicadoresDesempenhoAnual,
         models.Municipio,
@@ -422,15 +475,29 @@ def get_analise_eficiencia_hidrica(db: Session, ano: int) -> dict:
     
     for indicadores, municipio, recursos in dados:
         if recursos and recursos.volume_agua_produzido:
-            indice_perda = indicadores.indice_perda_faturamento or 0
+            # CORREÇÃO: Tratar valores None e NaN
+            indice_perda = indicadores.indice_perda_faturamento
+            if indice_perda is None or math.isnan(indice_perda):
+                indice_perda = 0
+            else:
+                indice_perda = float(indice_perda)
+            
             volume_produzido = recursos.volume_agua_produzido
-            volume_faturado = recursos.volume_agua_faturado or 0
+            if volume_produzido is None or math.isnan(volume_produzido):
+                continue  # Pular se não há volume produzido
+            
+            volume_faturado = recursos.volume_agua_faturado
+            if volume_faturado is None or math.isnan(volume_faturado):
+                volume_faturado = 0
+            else:
+                volume_faturado = float(volume_faturado)
+            
             eficiencia = ((volume_faturado / volume_produzido) * 100) if volume_produzido > 0 else 0
             
             eficiencias.append({
                 "municipio": municipio,
                 "indice_perda": indice_perda,
-                "volume_produzido": volume_produzido,
+                "volume_produzido": float(volume_produzido),
                 "volume_faturado": volume_faturado,
                 "eficiencia": eficiencia
             })

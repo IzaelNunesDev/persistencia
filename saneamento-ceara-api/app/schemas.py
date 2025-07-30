@@ -128,6 +128,12 @@ class HistoricoSaneamento(BaseModel):
     municipio: Municipio
     indicadores: List[IndicadoresCompleto]
 
+class PosicaoEspecifica(BaseModel):
+    municipio_id: str
+    posicao: Optional[int] = None
+    total: int
+    valor: Optional[float] = None
+
 class RankingItem(BaseModel):
     posicao: int
     municipio: dict
@@ -137,6 +143,7 @@ class RankingResponse(BaseModel):
     ano: int
     indicador: str
     ranking: List[RankingItem]
+    posicao_especifica: Optional[PosicaoEspecifica] = None  # Adicionar campo opcional
 
 class EvolucaoIndicador(BaseModel):
     ano: int
