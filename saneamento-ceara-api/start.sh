@@ -10,10 +10,14 @@ if [ -z "$DATABASE_URL" ]; then
     echo "⚠️  DATABASE_URL não configurada, usando configuração local"
 fi
 
+# Configurar porta
+export PORT=${PORT:-8000}
+echo "🌐 Usando porta: $PORT"
+
 # Executar migrações do banco de dados
 echo "📊 Executando migrações do banco de dados..."
 alembic upgrade head
 
 # Iniciar a aplicação
-echo "🌐 Iniciando servidor..."
+echo "🌐 Iniciando servidor na porta $PORT..."
 exec gunicorn app.main:app -c gunicorn.conf.py 

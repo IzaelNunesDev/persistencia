@@ -1,8 +1,12 @@
 # Configuração do Gunicorn para produção
 import multiprocessing
+import os
+
+# Obter porta do ambiente ou usar 8000 como padrão
+PORT = int(os.getenv("PORT", 8000))
 
 # Configurações básicas
-bind = "0.0.0.0:8000"
+bind = f"0.0.0.0:{PORT}"
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = "uvicorn.workers.UvicornWorker"
 worker_connections = 1000

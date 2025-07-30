@@ -19,7 +19,7 @@ COPY . .
 RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
 USER app
 
-# Expor a porta
+# Expor a porta (será configurada via variável de ambiente)
 EXPOSE 8000
 
 # Comando padrão para produção
