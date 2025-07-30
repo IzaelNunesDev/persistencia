@@ -6,272 +6,177 @@
 <article>
     <header>
         <h1>{{ municipio.nome }}</h1>
-        <p>Análise detalhada dos indicadores de saneamento</p>
+        <p>Análise detalhada dos indicadores de saneamento para o ano de {{ ano_atual }}</p>
     </header>
     
     <div class="grid">
-        <div>
+        <article>
             <h3>Informações Gerais</h3>
             <ul>
                 <li><strong>Código IBGE:</strong> {{ municipio.id_municipio }}</li>
                 <li><strong>Estado:</strong> {{ municipio.sigla_uf }}</li>
-                <li><strong>População Total (2022):</strong> {{ "{:,}".format(municipio.populacao_total_estimada_2022 or 0) }}</li>
-                <li><strong>População Urbana (2022):</strong> {{ "{:,}".format(municipio.populacao_urbana_estimada_2022 or 0) }}</li>
-                <li><strong>Prestador Predominante:</strong> {{ municipio.nome_prestador_predominante or 'N/A' }}</li>
+                <li><strong>População (2022):</strong> {{ "{:,.0f}".format(municipio.populacao_total_estimada_2022 or 0).replace(',', '.') }}</li>
+                <li><strong>Prestador:</strong> {{ municipio.nome_prestador_predominante or 'N/A' }}</li>
             </ul>
-        </div>
+        </article>
         
-        <div>
-            <h3>Infraestrutura</h3>
-            <ul>
-                <li><strong>Sedes de Água:</strong> {{ municipio.quantidade_sedes_agua or 0 }}</li>
-                <li><strong>Sedes de Esgoto:</strong> {{ municipio.quantidade_sedes_esgoto or 0 }}</li>
-            </ul>
-        </div>
-    </div>
-    
-    <div class="grid">
-        <div>
+        <article>
             <h3>Indicadores Atuais ({{ ano_atual }})</h3>
-            <div id="indicadores-atuais">
-                <div class="loading">Carregando indicadores...</div>
-            </div>
-        </div>
-        
-        <div>
-            <h3>Evolução dos Indicadores</h3>
-            <canvas id="evolucao-municipio" width="400" height="200"></canvas>
-        </div>
+            <div id="indicadores-atuais"><div class="loading">Carregando...</div></div>
+        </article>
     </div>
     
     <div class="grid">
-        <div>
-            <h3>Recursos Hídricos</h3>
-            <canvas id="recursos-hidricos" width="400" height="200"></canvas>
-        </div>
+        <article>
+            <header><h3>Evolução dos Indicadores</h3></header>
+            <div class="chart-container"><canvas id="evolucao-municipio"></canvas></div>
+        </article>
         
-        <div>
-            <h3>Indicadores Financeiros</h3>
-            <canvas id="indicadores-financeiros" width="400" height="200"></canvas>
-        </div>
+        <article>
+            <header><h3>Composição Financeira ({{ ano_atual }})</h3></header>
+            <div class="chart-container"><canvas id="indicadores-financeiros"></canvas></div>
+        </article>
     </div>
     
-    <div>
-        <h3>Comparação com Outros Municípios</h3>
+    <article>
+        <header><h3>Posição no Ranking Estadual ({{ ano_atual }})</h3></header>
         <div class="grid">
-            <div>
-                <h4>Ranking - Atendimento de Água</h4>
-                <div id="ranking-agua-municipio">
-                    <div class="loading">Carregando ranking...</div>
-                </div>
+             <div>
+                <h4>Atendimento de Água</h4>
+                <div id="ranking-agua-municipio"><div class="loading">Carregando...</div></div>
             </div>
-            
             <div>
-                <h4>Ranking - Coleta de Esgoto</h4>
-                <div id="ranking-esgoto-municipio">
-                    <div class="loading">Carregando ranking...</div>
-                </div>
+                <h4>Coleta de Esgoto</h4>
+                <div id="ranking-esgoto-municipio"><div class="loading">Carregando...</div></div>
             </div>
         </div>
-    </div>
+    </article>
 </article>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
+const MUNICIPIO_ID = '{{ municipio.id_municipio }}';
+const ANO_ATUAL = '{{ ano_atual }}';
+const formatPercent = (num) => num !== null && num !== undefined ? `${num.toFixed(1)}%` : 'N/A';
+const formatCurrency = (num) => num !== null && num !== undefined ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num) : 'N/A';
+
 document.addEventListener('DOMContentLoaded', function() {
-    const municipioId = '{{ municipio.id_municipio }}';
-    carregarIndicadoresAtuais(municipioId);
-    carregarEvolucaoMunicipio(municipioId);
-    carregarRecursosHidricos(municipioId);
-    carregarIndicadoresFinanceiros(municipioId);
-    carregarRankingsMunicipio(municipioId);
+    carregarDadosPagina();
 });
 
-async function carregarIndicadoresAtuais(municipioId) {
-    try {
-        const response = await fetch(`/api/v1/municipios/${municipioId}/indicadores-atuais`);
-        const data = await response.json();
-        
-        const container = document.getElementById('indicadores-atuais');
-        container.innerHTML = `
-            <div class="grid">
-                <div>
-                    <strong>Atendimento Água:</strong> ${data.indice_atendimento_agua?.toFixed(1) || 'N/A'}%
-                </div>
-                <div>
-                    <strong>Coleta Esgoto:</strong> ${data.indice_coleta_esgoto?.toFixed(1) || 'N/A'}%
-                </div>
-                <div>
-                    <strong>Tratamento Esgoto:</strong> ${data.indice_tratamento_esgoto?.toFixed(1) || 'N/A'}%
-                </div>
-                <div>
-                    <strong>Perda Faturamento:</strong> ${data.indice_perda_faturamento?.toFixed(1) || 'N/A'}%
-                </div>
-            </div>
-        `;
-    } catch (error) {
-        console.error('Erro ao carregar indicadores atuais:', error);
+async function carregarDadosPagina() {
+    // Busca todos os indicadores de uma vez para eficiência
+    const [indicadoresResponse, evolucaoResponse, rankingAguaResponse, rankingEsgotoResponse] = await Promise.allSettled([
+        fetch(`/api/v1/municipios/${MUNICIPIO_ID}/indicadores`),
+        fetch(`/api/v1/analises/evolucao?municipio_id=${MUNICIPIO_ID}`),
+        fetch(`/api/v1/analises/ranking?indicador=indice_atendimento_agua&municipio_id=${MUNICIPIO_ID}`),
+        fetch(`/api/v1/analises/ranking?indicador=indice_coleta_esgoto&municipio_id=${MUNICIPIO_ID}`)
+    ]);
+
+    // Processar dados dos indicadores (atuais e financeiros)
+    if (indicadoresResponse.status === 'fulfilled' && indicadoresResponse.value.ok) {
+        const indicadores = await indicadoresResponse.value.json();
+        const indicadorAtual = indicadores.find(ind => ind.ano == ANO_ATUAL) || indicadores[0];
+        if (indicadorAtual) {
+            renderizarIndicadoresAtuais(indicadorAtual);
+            renderizarGraficoFinanceiro(indicadorAtual.financeiro);
+        } else {
+             document.getElementById('indicadores-atuais').innerHTML = '<div class="error">Dados não encontrados para o ano.</div>';
+             document.getElementById('indicadores-financeiros').parentElement.innerHTML = '<div class="error">Dados financeiros não encontrados.</div>';
+        }
+    } else {
+        document.getElementById('indicadores-atuais').innerHTML = '<div class="error">Erro ao carregar indicadores.</div>';
     }
+
+    // Processar evolução
+    if (evolucaoResponse.status === 'fulfilled' && evolucaoResponse.value.ok) {
+        const evolucaoData = await evolucaoResponse.value.json();
+        renderizarGraficoEvolucao(evolucaoData.indicadores.evolucao);
+    } else {
+        document.getElementById('evolucao-municipio').parentElement.innerHTML = '<div class="error">Erro ao carregar evolução.</div>';
+    }
+
+    // Processar rankings
+    processarRanking('agua', rankingAguaResponse);
+    processarRanking('esgoto', rankingEsgotoResponse);
 }
 
-async function carregarEvolucaoMunicipio(municipioId) {
-    try {
-        const response = await fetch(`/api/v1/municipios/${municipioId}/evolucao`);
-        const data = await response.json();
-        
-        const ctx = document.getElementById('evolucao-municipio').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.evolucao.map(item => item.ano),
-                datasets: [
-                    {
-                        label: 'Atendimento Água (%)',
-                        data: data.evolucao.map(item => item.indice_atendimento_agua),
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Coleta Esgoto (%)',
-                        data: data.evolucao.map(item => item.indice_coleta_esgoto),
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Tratamento Esgoto (%)',
-                        data: data.evolucao.map(item => item.indice_tratamento_esgoto),
-                        borderColor: 'rgb(255, 205, 86)',
-                        tension: 0.1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
-                    }
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Erro ao carregar evolução do município:', error);
-    }
+function renderizarIndicadoresAtuais(data) {
+    const container = document.getElementById('indicadores-atuais');
+    container.innerHTML = `
+        <div class="indicador-item"><span>Atendimento Água:</span> <strong>${formatPercent(data.indice_atendimento_agua)}</strong></div>
+        <div class="indicador-item"><span>Coleta Esgoto:</span> <strong>${formatPercent(data.indice_coleta_esgoto)}</strong></div>
+        <div class="indicador-item"><span>Tratamento Esgoto:</span> <strong>${formatPercent(data.indice_tratamento_esgoto)}</strong></div>
+        <div class="indicador-item"><span>Perda Faturamento:</span> <strong>${formatPercent(data.indice_perda_faturamento)}</strong></div>
+    `;
 }
 
-async function carregarRecursosHidricos(municipioId) {
-    try {
-        const response = await fetch(`/api/v1/municipios/${municipioId}/recursos-hidricos`);
-        const data = await response.json();
-        
-        const ctx = document.getElementById('recursos-hidricos').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Água Produzida', 'Água Consumida', 'Água Faturada', 'Esgoto Coletado', 'Esgoto Tratado'],
-                datasets: [{
-                    label: 'Volume (m³)',
-                    data: [
-                        data.volume_agua_produzido || 0,
-                        data.volume_agua_consumido || 0,
-                        data.volume_agua_faturado || 0,
-                        data.volume_esgoto_coletado || 0,
-                        data.volume_esgoto_tratado || 0
-                    ],
-                    backgroundColor: [
-                        'rgba(75, 192, 192, 0.6)',
-                        'rgba(54, 162, 235, 0.6)',
-                        'rgba(255, 206, 86, 0.6)',
-                        'rgba(255, 99, 132, 0.6)',
-                        'rgba(153, 102, 255, 0.6)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Erro ao carregar recursos hídricos:', error);
-    }
+function renderizarGraficoEvolucao(evolucao) {
+    const ctx = document.getElementById('evolucao-municipio').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: evolucao.map(item => item.ano),
+            datasets: [
+                { label: 'Água (%)', data: evolucao.map(item => item.indice_atendimento_agua), borderColor: '#2196F3', tension: 0.1 },
+                { label: 'Esgoto (%)', data: evolucao.map(item => item.indice_coleta_esgoto), borderColor: '#4CAF50', tension: 0.1 },
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+    });
 }
 
-async function carregarIndicadoresFinanceiros(municipioId) {
-    try {
-        const response = await fetch(`/api/v1/municipios/${municipioId}/indicadores-financeiros`);
-        const data = await response.json();
-        
-        const ctx = document.getElementById('indicadores-financeiros').getContext('2d');
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Receita Operacional', 'Despesa Exploração', 'Despesa Pessoal', 'Despesa Energia', 'Investimento'],
-                datasets: [{
-                    data: [
-                        data.receita_operacional_total || 0,
-                        data.despesa_exploracao || 0,
-                        data.despesa_pessoal || 0,
-                        data.despesa_energia || 0,
-                        data.investimento_total_prestador || 0
-                    ],
-                    backgroundColor: [
-                        'rgba(75, 192, 192, 0.6)',
-                        'rgba(255, 99, 132, 0.6)',
-                        'rgba(255, 205, 86, 0.6)',
-                        'rgba(54, 162, 235, 0.6)',
-                        'rgba(153, 102, 255, 0.6)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true
-            }
-        });
-    } catch (error) {
-        console.error('Erro ao carregar indicadores financeiros:', error);
+function renderizarGraficoFinanceiro(financeiro) {
+    if (!financeiro) {
+        document.getElementById('indicadores-financeiros').parentElement.innerHTML = '<div class="error">Dados financeiros não encontrados.</div>';
+        return;
     }
+    const ctx = document.getElementById('indicadores-financeiros').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Receita Total', 'Despesa Total', 'Investimento'],
+            datasets: [{
+                data: [
+                    financeiro.receita_operacional_total || 0,
+                    financeiro.despesa_total_servicos || 0,
+                    financeiro.investimento_total_prestador || 0
+                ],
+                backgroundColor: ['#4CAF50', '#F44336', '#FFC107']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
 }
 
-async function carregarRankingsMunicipio(municipioId) {
-    try {
-        // Ranking de água
-        const responseAgua = await fetch(`/api/v1/analises/ranking?indicador=indice_atendimento_agua&municipio_id=${municipioId}`);
-        const dataAgua = await responseAgua.json();
-        
-        const containerAgua = document.getElementById('ranking-agua-municipio');
-        containerAgua.innerHTML = `
-            <div class="ranking-item">
-                <strong>Posição:</strong> ${dataAgua.posicao || 'N/A'} de ${dataAgua.total || 'N/A'}
-            </div>
-            <div class="ranking-item">
-                <strong>Valor:</strong> ${dataAgua.valor?.toFixed(1) || 'N/A'}%
-            </div>
-        `;
-        
-        // Ranking de esgoto
-        const responseEsgoto = await fetch(`/api/v1/analises/ranking?indicador=indice_coleta_esgoto&municipio_id=${municipioId}`);
-        const dataEsgoto = await responseEsgoto.json();
-        
-        const containerEsgoto = document.getElementById('ranking-esgoto-municipio');
-        containerEsgoto.innerHTML = `
-            <div class="ranking-item">
-                <strong>Posição:</strong> ${dataEsgoto.posicao || 'N/A'} de ${dataEsgoto.total || 'N/A'}
-            </div>
-            <div class="ranking-item">
-                <strong>Valor:</strong> ${dataEsgoto.valor?.toFixed(1) || 'N/A'}%
-            </div>
-        `;
-        
-    } catch (error) {
-        console.error('Erro ao carregar rankings do município:', error);
+async function processarRanking(tipo, response) {
+    const container = document.getElementById(`ranking-${tipo}-municipio`);
+    if (response.status === 'fulfilled' && response.value.ok) {
+        const data = await response.value.json();
+        if (data.posicao_especifica && data.posicao_especifica.posicao) {
+            container.innerHTML = `
+                <div class="indicador-item">
+                    <span>Posição:</span> 
+                    <strong>${data.posicao_especifica.posicao}º de ${data.posicao_especifica.total}</strong>
+                </div>
+                <div class="indicador-item">
+                    <span>Valor:</span> 
+                    <strong>${formatPercent(data.posicao_especifica.valor)}</strong>
+                </div>
+            `;
+        } else {
+             container.innerHTML = '<div class="error">Posição não encontrada.</div>';
+        }
+    } else {
+        container.innerHTML = '<div class="error">Erro ao carregar ranking.</div>';
     }
 }
 </script>
+<style>
+.chart-container { position: relative; height: 250px; }
+.indicador-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e1e1e1; }
+.loading, .error { text-align: center; padding: 2rem; color: #6c757d; }
+.error { color: #dc3545; }
+</style>
 {% endblock %} 

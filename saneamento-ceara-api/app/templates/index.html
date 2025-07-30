@@ -33,60 +33,45 @@
                 </footer>
             </article>
         </div>
-        
-        <div>
-            <article>
-                <header>
-                    <h3>📈 Evolução Temporal</h3>
-                </header>
-                <p>Acompanhe a evolução dos indicadores ao longo do tempo e identifique tendências e melhorias.</p>
-                <footer>
-                    <a href="/dashboard/analises" role="button">Ver Evolução</a>
-                </footer>
-            </article>
-        </div>
-        
-        <div>
-            <article>
-                <header>
-                    <h3>💰 Sustentabilidade</h3>
-                </header>
-                <p>Analise a sustentabilidade financeira dos serviços de saneamento e identifique oportunidades de melhoria.</p>
-                <footer>
-                    <a href="/dashboard/analises" role="button">Ver Análise</a>
-                </footer>
-            </article>
-        </div>
     </div>
     
     <div class="grid">
-        <div>
-            <h3>Indicadores Principais</h3>
+        <article>
+            <header>
+                <h3>Indicadores Médios do Estado (Ano mais recente)</h3>
+            </header>
             <div id="indicadores-principais">
                 <div class="loading">Carregando indicadores...</div>
             </div>
-        </div>
+        </article>
         
-        <div>
-            <h3>Evolução dos Indicadores</h3>
-            <canvas id="evolucao-chart" width="400" height="200"></canvas>
-        </div>
+        <article>
+            <header>
+                <h3>Evolução dos Indicadores Médios</h3>
+            </header>
+            <canvas id="evolucao-chart"></canvas>
+            <div id="evolucao-chart-loading" class="loading" style="display:none;">Carregando gráfico...</div>
+        </article>
     </div>
     
     <div class="grid">
-        <div>
-            <h3>Top 5 Municípios - Atendimento de Água</h3>
+        <article>
+            <header>
+                <h3>Top 5 Municípios - Atendimento de Água</h3>
+            </header>
             <div id="ranking-agua">
                 <div class="loading">Carregando ranking...</div>
             </div>
-        </div>
+        </article>
         
-        <div>
-            <h3>Top 5 Municípios - Coleta de Esgoto</h3>
+        <article>
+            <header>
+                <h3>Top 5 Municípios - Coleta de Esgoto</h3>
+            </header>
             <div id="ranking-esgoto">
                 <div class="loading">Carregando ranking...</div>
             </div>
-        </div>
+        </article>
     </div>
 </article>
 {% endblock %}
@@ -100,39 +85,50 @@ document.addEventListener('DOMContentLoaded', function() {
     carregarRankings();
 });
 
+// Funções de formatação para reutilização
+const formatPercent = (num) => num !== null && num !== undefined ? `${num.toFixed(1)}%` : 'N/A';
+
 async function carregarIndicadoresPrincipais() {
+    const container = document.getElementById('indicadores-principais');
     try {
-        const response = await fetch('/api/v1/analises/indicadores-principais');
-        const data = await response.json();
+        const data = await (await fetch('/api/v1/analises/indicadores-principais')).json();
         
-        const container = document.getElementById('indicadores-principais');
         container.innerHTML = `
             <div class="grid">
-                <div>
-                    <strong>Média Atendimento Água:</strong> ${data.media_atendimento_agua?.toFixed(1) || 'N/A'}%
+                <div class="indicador-card">
+                    <div class="indicador-label">Atendimento Água</div>
+                    <div class="indicador-valor agua">${formatPercent(data.media_atendimento_agua)}</div>
                 </div>
-                <div>
-                    <strong>Média Coleta Esgoto:</strong> ${data.media_coleta_esgoto?.toFixed(1) || 'N/A'}%
+                <div class="indicador-card">
+                    <div class="indicador-label">Coleta Esgoto</div>
+                    <div class="indicador-valor esgoto">${formatPercent(data.media_coleta_esgoto)}</div>
                 </div>
-                <div>
-                    <strong>Média Tratamento Esgoto:</strong> ${data.media_tratamento_esgoto?.toFixed(1) || 'N/A'}%
+                <div class="indicador-card">
+                    <div class="indicador-label">Tratamento Esgoto</div>
+                    <div class="indicador-valor esgoto">${formatPercent(data.media_tratamento_esgoto)}</div>
                 </div>
-                <div>
-                    <strong>Média Perda Faturamento:</strong> ${data.media_perda_faturamento?.toFixed(1) || 'N/A'}%
+                <div class="indicador-card">
+                    <div class="indicador-label">Perda Faturamento</div>
+                    <div class="indicador-valor">${formatPercent(data.media_perda_faturamento)}</div>
                 </div>
             </div>
         `;
     } catch (error) {
+        container.innerHTML = '<div class="error">Erro ao carregar indicadores.</div>';
         console.error('Erro ao carregar indicadores principais:', error);
     }
 }
 
 async function carregarEvolucaoTemporal() {
+    const loading = document.getElementById('evolucao-chart-loading');
+    const canvas = document.getElementById('evolucao-chart');
+    loading.style.display = 'block';
+    canvas.style.display = 'none';
+
     try {
-        const response = await fetch('/api/v1/analises/evolucao-temporal');
-        const data = await response.json();
+        const data = await (await fetch('/api/v1/analises/evolucao-temporal')).json();
         
-        const ctx = document.getElementById('evolucao-chart').getContext('2d');
+        const ctx = canvas.getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
@@ -141,59 +137,77 @@ async function carregarEvolucaoTemporal() {
                     {
                         label: 'Atendimento Água (%)',
                         data: data.atendimento_agua,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1
+                        borderColor: '#2196F3', // azul
+                        tension: 0.1,
+                        fill: false
                     },
                     {
                         label: 'Coleta Esgoto (%)',
                         data: data.coleta_esgoto,
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1
+                        borderColor: '#4CAF50', // verde
+                        tension: 0.1,
+                        fill: false
                     }
                 ]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
-                    }
+                    y: { beginAtZero: true, max: 100 }
                 }
             }
         });
+        loading.style.display = 'none';
+        canvas.style.display = 'block';
     } catch (error) {
+        loading.innerHTML = '<div class="error">Erro ao carregar gráfico.</div>';
         console.error('Erro ao carregar evolução temporal:', error);
     }
 }
 
 async function carregarRankings() {
+    // Ranking de água
+    const containerAgua = document.getElementById('ranking-agua');
     try {
-        // Ranking de água
-        const responseAgua = await fetch('/api/v1/analises/ranking?indicador=indice_atendimento_agua&limit=5');
-        const dataAgua = await responseAgua.json();
-        
-        const containerAgua = document.getElementById('ranking-agua');
+        const dataAgua = await (await fetch('/api/v1/analises/ranking?indicador=indice_atendimento_agua&limit=5')).json();
+        // A API retorna um objeto, o ranking está em `data.ranking`
         containerAgua.innerHTML = dataAgua.ranking.map((item, index) => `
             <div class="ranking-item">
-                <strong>${index + 1}.</strong> ${item.municipio.nome} - ${item.valor.toFixed(1)}%
+                <span><strong>${index + 1}.</strong> ${item.municipio.nome}</span>
+                <span>${formatPercent(item.valor)}</span>
             </div>
         `).join('');
-        
-        // Ranking de esgoto
-        const responseEsgoto = await fetch('/api/v1/analises/ranking?indicador=indice_coleta_esgoto&limit=5');
-        const dataEsgoto = await responseEsgoto.json();
-        
-        const containerEsgoto = document.getElementById('ranking-esgoto');
+    } catch (error) {
+        containerAgua.innerHTML = '<div class="error">Erro ao carregar ranking.</div>';
+        console.error('Erro ao carregar ranking de água:', error);
+    }
+    
+    // Ranking de esgoto
+    const containerEsgoto = document.getElementById('ranking-esgoto');
+    try {
+        const dataEsgoto = await (await fetch('/api/v1/analises/ranking?indicador=indice_coleta_esgoto&limit=5')).json();
         containerEsgoto.innerHTML = dataEsgoto.ranking.map((item, index) => `
             <div class="ranking-item">
-                <strong>${index + 1}.</strong> ${item.municipio.nome} - ${item.valor.toFixed(1)}%
+                <span><strong>${index + 1}.</strong> ${item.municipio.nome}</span>
+                <span>${formatPercent(item.valor)}</span>
             </div>
         `).join('');
-        
-    } catch (error) {
-        console.error('Erro ao carregar rankings:', error);
+    } catch(error) {
+        containerEsgoto.innerHTML = '<div class="error">Erro ao carregar ranking.</div>';
+        console.error('Erro ao carregar ranking de esgoto:', error);
     }
 }
 </script>
+<style>
+.ranking-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    border-bottom: 1px solid #e1e1e1;
+}
+.ranking-item:last-child {
+    border-bottom: none;
+}
+</style>
 {% endblock %} 
