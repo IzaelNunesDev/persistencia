@@ -29,9 +29,22 @@ app = FastAPI(
 )
 
 # Configurar CORS
+import os
+environment = os.getenv("ENVIRONMENT", "development")
+
+if environment == "production":
+    # Em produção, permitir apenas domínios específicos
+    allowed_origins = [
+        "https://saneamento-ceara-api.onrender.com",
+        "https://*.onrender.com"
+    ]
+else:
+    # Em desenvolvimento, permitir todos os domínios
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Em produção, especificar domínios específicos
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

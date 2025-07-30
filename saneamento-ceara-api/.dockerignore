@@ -1,0 +1,68 @@
+# Arquivos e diretórios a serem ignorados no build do Docker
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Arquivos de desenvolvimento
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Diretórios de desenvolvimento
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Documentação
+docs/
+*.md
+!README.md
+
+# Testes
+tests/
+test_*
+*_test.py
+
+# Scripts de desenvolvimento
+scripts/
+manage.py 

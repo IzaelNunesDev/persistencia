@@ -133,41 +133,25 @@ dmypy.json
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Arquivos específicos do projeto
-# Dados brutos (muito grandes) - não versionar CSVs
-*.csv
-
-# Logs
+# Project specific
 logs/
 *.log
+data/
+*.csv
+*.xlsx
+*.xls
 
-# Arquivos temporários
-temp/
-tmp/
-
-# Configurações locais
-config.local.py
-settings.local.py
-
-# Banco de dados
+# Database
 *.db
 *.sqlite
 *.sqlite3
 
-# Arquivos de backup
-*.bak
-*.backup
-
-# Arquivos de análise temporários
-analise_limpeza_dados.py
-venv_analise/
-
-# Documentação temporária
-plan.md
-planfinal.md
-query.md 
+# Temporary files
+*.tmp
+*.temp 

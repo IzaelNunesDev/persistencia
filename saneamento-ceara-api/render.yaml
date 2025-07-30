@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: saneamento-ceara-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: ./start.sh
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: saneamento-ceara-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: PORT
+        value: 8000
+
+databases:
+  - name: saneamento-ceara-db
+    databaseName: saneamento_ceara
+    user: saneamento_user
+    plan: free 
