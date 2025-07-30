@@ -1,5 +1,6 @@
 # Arquivos CSV (dados grandes)
 *.csv
+!saneamento-ceara-api/data/dados_snis_ceara_limpos.csv
 
 # Arquivos temporários
 *.tmp

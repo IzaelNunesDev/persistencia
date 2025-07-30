@@ -142,7 +142,8 @@ Thumbs.db
 # Project specific
 logs/
 *.log
-data/
+data/*
+!data/dados_snis_ceara_limpos.csv
 *.csv
 *.xlsx
 *.xls

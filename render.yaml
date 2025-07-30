@@ -5,7 +5,7 @@ services:
     plan: free
     rootDir: saneamento-ceara-api
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: ./start.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
