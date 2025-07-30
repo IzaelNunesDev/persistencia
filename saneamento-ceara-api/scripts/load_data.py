@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Script para carregar dados processados no banco de dados PostgreSQL
-"""
-
 import pandas as pd
 import os
 import sys
@@ -15,7 +10,7 @@ import logging
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.database import DATABASE_URL
-from app.models import Base, Municipio, DadosSaneamentoAnual, PrestadorServico
+from app.models import Base, Municipio, IndicadoresDesempenhoAnual, PrestadorServico
 from app import crud, schemas
 
 # Configurar logging
@@ -311,28 +306,30 @@ def carregar_dados_snis(engine, csv_path: str):
             for _, row in batch.iterrows():
                 try:
                     # Criar dados de saneamento
-                    dados_saneamento = schemas.DadosSaneamentoCreate(
+                    dados_saneamento = schemas.IndicadoresDesempenhoCreate(
                         ano=int(row['ano']),
                         municipio_id=str(row['id_municipio']),
                         prestador_id=prestador_padrao.id,
                         populacao_total_atendida_agua=row.get('populacao_atendida_agua'),
-                        populacao_total_atendida_esgoto=row.get('populacao_total_atendida_esgoto'),
-                        indice_atendimento_agua=row.get('indice_atendimento_agua'),
+                        populacao_total_atendida_esgoto=row.get('populacao_atentida_esgoto'),
+                        indice_atendimento_agua=row.get('indice_atendimento_total_agua'),
                         indice_coleta_esgoto=row.get('indice_coleta_esgoto'),
                         indice_tratamento_esgoto=row.get('indice_tratamento_esgoto'),
                         indice_perda_faturamento=row.get('indice_perda_faturamento'),
                         volume_agua_produzido=row.get('volume_agua_produzido'),
                         volume_esgoto_tratado=row.get('volume_esgoto_tratado'),
                         receita_operacional_total=row.get('receita_operacional_total'),
-                        despesa_total_servicos=row.get('despesa_total_servicos'),
-                        investimento_total=row.get('investimento_total')
+                        despesa_total_servicos=row.get('despesa_total_servico'),
+                        investimento_total=row.get('investimento_total_prestador')
                     )
                     
-                    crud.create_dados_saneamento(db, dados_saneamento)
+                    crud.create_indicadores(db, dados_saneamento)
                     total_processed += 1
                     
                 except Exception as e:
-                    logger.warning(f"Erro ao processar linha {i}: {e}")
+                    logger.warning(f"Erro ao processar linha {i} (municipio_id={row.get('id_municipio')}, ano={row.get('ano')}): {e}")
+                    import traceback
+                    logger.warning(traceback.format_exc())
                     continue
             
             # Commit a cada lote
@@ -361,7 +358,7 @@ def main():
     criar_tabelas(engine)
     
     # Verificar se existe o CSV principal
-    csv_principal = "../br_mdr_snis_municipio_agua_esgoto.csv"
+    csv_principal = "../../br_mdr_snis_municipio_agua_esgoto.csv"
     csv_limpo = "data/dados_snis_ceara_limpos.csv"
     
     # Carregar municípios do Ceará

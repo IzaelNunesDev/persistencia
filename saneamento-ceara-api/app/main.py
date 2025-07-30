@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 import logging
 from app.database import engine
 from app import models
-from app.routers import municipios, analises
+from app.routers import municipios, analises, dashboard
 
 # Configurar logging
 logging.basicConfig(
@@ -38,22 +40,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Montar arquivos estáticos
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 # Incluir routers
 app.include_router(municipios.router, prefix="/api/v1")
 app.include_router(analises.router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/dashboard")
 
 @app.get("/")
 async def root():
     """
-    Endpoint raiz da API
+    Endpoint raiz da API - redireciona para o dashboard
     """
-    logger.info("Acesso ao endpoint raiz")
-    return {
-        "message": "API de Análise de Saneamento do Ceará",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "redoc": "/redoc"
-    }
+    logger.info("Acesso ao endpoint raiz - redirecionando para dashboard")
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/dashboard")
 
 @app.get("/health")
 async def health_check():
@@ -76,6 +78,7 @@ async def api_info():
         "endpoints": {
             "municipios": "/api/v1/municipios",
             "analises": "/api/v1/analises",
+            "dashboard": "/dashboard",
             "docs": "/docs"
         }
     }

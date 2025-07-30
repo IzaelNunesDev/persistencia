@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Visão Geral{% endblock %}
+
+{% block content %}
+<article>
+    <header>
+        <h1>Dashboard de Saneamento do Ceará</h1>
+        <p>Análise abrangente dos dados do Sistema Nacional de Informações sobre Saneamento (SNIS)</p>
+    </header>
+    
+    <div class="grid">
+        <div>
+            <article>
+                <header>
+                    <h3>📊 Visão Geral</h3>
+                </header>
+                <p>Explore dados de saneamento básico de todos os municípios do Ceará, incluindo indicadores de água, esgoto, recursos hídricos e aspectos financeiros.</p>
+                <footer>
+                    <a href="/dashboard/municipios" role="button">Ver Municípios</a>
+                </footer>
+            </article>
+        </div>
+        
+        <div>
+            <article>
+                <header>
+                    <h3>🏆 Rankings</h3>
+                </header>
+                <p>Descubra os municípios com melhor desempenho em diferentes indicadores de saneamento e sustentabilidade.</p>
+                <footer>
+                    <a href="/dashboard/analises" role="button">Ver Rankings</a>
+                </footer>
+            </article>
+        </div>
+        
+        <div>
+            <article>
+                <header>
+                    <h3>📈 Evolução Temporal</h3>
+                </header>
+                <p>Acompanhe a evolução dos indicadores ao longo do tempo e identifique tendências e melhorias.</p>
+                <footer>
+                    <a href="/dashboard/analises" role="button">Ver Evolução</a>
+                </footer>
+            </article>
+        </div>
+        
+        <div>
+            <article>
+                <header>
+                    <h3>💰 Sustentabilidade</h3>
+                </header>
+                <p>Analise a sustentabilidade financeira dos serviços de saneamento e identifique oportunidades de melhoria.</p>
+                <footer>
+                    <a href="/dashboard/analises" role="button">Ver Análise</a>
+                </footer>
+            </article>
+        </div>
+    </div>
+    
+    <div class="grid">
+        <div>
+            <h3>Indicadores Principais</h3>
+            <div id="indicadores-principais">
+                <div class="loading">Carregando indicadores...</div>
+            </div>
+        </div>
+        
+        <div>
+            <h3>Evolução dos Indicadores</h3>
+            <canvas id="evolucao-chart" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <div class="grid">
+        <div>
+            <h3>Top 5 Municípios - Atendimento de Água</h3>
+            <div id="ranking-agua">
+                <div class="loading">Carregando ranking...</div>
+            </div>
+        </div>
+        
+        <div>
+            <h3>Top 5 Municípios - Coleta de Esgoto</h3>
+            <div id="ranking-esgoto">
+                <div class="loading">Carregando ranking...</div>
+            </div>
+        </div>
+    </div>
+</article>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar dados iniciais
+    carregarIndicadoresPrincipais();
+    carregarEvolucaoTemporal();
+    carregarRankings();
+});
+
+async function carregarIndicadoresPrincipais() {
+    try {
+        const response = await fetch('/api/v1/analises/indicadores-principais');
+        const data = await response.json();
+        
+        const container = document.getElementById('indicadores-principais');
+        container.innerHTML = `
+            <div class="grid">
+                <div>
+                    <strong>Média Atendimento Água:</strong> ${data.media_atendimento_agua?.toFixed(1) || 'N/A'}%
+                </div>
+                <div>
+                    <strong>Média Coleta Esgoto:</strong> ${data.media_coleta_esgoto?.toFixed(1) || 'N/A'}%
+                </div>
+                <div>
+                    <strong>Média Tratamento Esgoto:</strong> ${data.media_tratamento_esgoto?.toFixed(1) || 'N/A'}%
+                </div>
+                <div>
+                    <strong>Média Perda Faturamento:</strong> ${data.media_perda_faturamento?.toFixed(1) || 'N/A'}%
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Erro ao carregar indicadores principais:', error);
+    }
+}
+
+async function carregarEvolucaoTemporal() {
+    try {
+        const response = await fetch('/api/v1/analises/evolucao-temporal');
+        const data = await response.json();
+        
+        const ctx = document.getElementById('evolucao-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.anos,
+                datasets: [
+                    {
+                        label: 'Atendimento Água (%)',
+                        data: data.atendimento_agua,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Coleta Esgoto (%)',
+                        data: data.coleta_esgoto,
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao carregar evolução temporal:', error);
+    }
+}
+
+async function carregarRankings() {
+    try {
+        // Ranking de água
+        const responseAgua = await fetch('/api/v1/analises/ranking?indicador=indice_atendimento_agua&limit=5');
+        const dataAgua = await responseAgua.json();
+        
+        const containerAgua = document.getElementById('ranking-agua');
+        containerAgua.innerHTML = dataAgua.ranking.map((item, index) => `
+            <div class="ranking-item">
+                <strong>${index + 1}.</strong> ${item.municipio.nome} - ${item.valor.toFixed(1)}%
+            </div>
+        `).join('');
+        
+        // Ranking de esgoto
+        const responseEsgoto = await fetch('/api/v1/analises/ranking?indicador=indice_coleta_esgoto&limit=5');
+        const dataEsgoto = await responseEsgoto.json();
+        
+        const containerEsgoto = document.getElementById('ranking-esgoto');
+        containerEsgoto.innerHTML = dataEsgoto.ranking.map((item, index) => `
+            <div class="ranking-item">
+                <strong>${index + 1}.</strong> ${item.municipio.nome} - ${item.valor.toFixed(1)}%
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Erro ao carregar rankings:', error);
+    }
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}Municípios - Saneamento Ceará{% endblock %}
+
+{% block content %}
+<div class="container">
+    <header class="hero">
+        <h1>🏘️ Municípios do Ceará</h1>
+        <p>Lista completa dos 184 municípios com dados de saneamento básico</p>
+    </header>
+
+    <main>
+        <!-- Filtros e Busca -->
+        <section>
+            <article>
+                <div class="filtros-container">
+                    <div class="form-group">
+                        <label for="busca">Buscar município:</label>
+                        <input type="text" id="busca" class="form-control" placeholder="Digite o nome do município...">
+                    </div>
+                    <div class="form-group">
+                        <label for="ordenacao">Ordenar por:</label>
+                        <select id="ordenacao" class="form-control">
+                            <option value="nome">Nome</option>
+                            <option value="agua">Atendimento de Água</option>
+                            <option value="esgoto">Coleta de Esgoto</option>
+                            <option value="tratamento">Tratamento de Esgoto</option>
+                            <option value="perda">Perda de Faturamento</option>
+                        </select>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <!-- Lista de Municípios -->
+        <section>
+            <article>
+                <div id="municipios-container" class="municipios-grid">
+                    <div class="loading">Carregando municípios...</div>
+                </div>
+            </article>
+        </section>
+
+        <!-- Paginação -->
+        <section>
+            <article>
+                <div class="paginacao">
+                    <button id="anterior" class="btn btn-secondary" disabled>Anterior</button>
+                    <span id="info-paginacao">Página 1 de 1</span>
+                    <button id="proximo" class="btn btn-secondary">Próximo</button>
+                </div>
+            </article>
+        </section>
+    </main>
+</div>
+
+<script>
+let municipios = [];
+let municipiosFiltrados = [];
+let paginaAtual = 1;
+const itensPorPagina = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    carregarMunicipios();
+    
+    // Event listeners
+    document.getElementById('busca').addEventListener('input', filtrarMunicipios);
+    document.getElementById('ordenacao').addEventListener('change', ordenarMunicipios);
+    document.getElementById('anterior').addEventListener('click', () => mudarPagina(-1));
+    document.getElementById('proximo').addEventListener('click', () => mudarPagina(1));
+});
+
+async function carregarMunicipios() {
+    try {
+        const response = await fetch('/api/v1/municipios/');
+        municipios = await response.json();
+        municipiosFiltrados = [...municipios];
+        renderizarMunicipios();
+    } catch (error) {
+        console.error('Erro ao carregar municípios:', error);
+        document.getElementById('municipios-container').innerHTML = 
+            '<div class="error">Erro ao carregar municípios. Tente novamente.</div>';
+    }
+}
+
+function filtrarMunicipios() {
+    const termo = document.getElementById('busca').value.toLowerCase();
+    const ordenacao = document.getElementById('ordenacao').value;
+    
+    municipiosFiltrados = municipios.filter(municipio => 
+        municipio.nome.toLowerCase().includes(termo)
+    );
+    
+    ordenarMunicipios();
+    paginaAtual = 1;
+    renderizarMunicipios();
+}
+
+function ordenarMunicipios() {
+    const ordenacao = document.getElementById('ordenacao').value;
+    
+    municipiosFiltrados.sort((a, b) => {
+        switch (ordenacao) {
+            case 'nome':
+                return a.nome.localeCompare(b.nome);
+            case 'agua':
+                return (b.indice_atendimento_agua || 0) - (a.indice_atendimento_agua || 0);
+            case 'esgoto':
+                return (b.indice_coleta_esgoto || 0) - (a.indice_coleta_esgoto || 0);
+            case 'tratamento':
+                return (b.indice_tratamento_esgoto || 0) - (a.indice_tratamento_esgoto || 0);
+            case 'perda':
+                return (a.indice_perda_faturamento || 0) - (b.indice_perda_faturamento || 0);
+            default:
+                return 0;
+        }
+    });
+    
+    renderizarMunicipios();
+}
+
+function renderizarMunicipios() {
+    const container = document.getElementById('municipios-container');
+    const inicio = (paginaAtual - 1) * itensPorPagina;
+    const fim = inicio + itensPorPagina;
+    const municipiosPagina = municipiosFiltrados.slice(inicio, fim);
+    
+    if (municipiosPagina.length === 0) {
+        container.innerHTML = '<div class="no-results">Nenhum município encontrado.</div>';
+        return;
+    }
+    
+    container.innerHTML = municipiosPagina.map(municipio => `
+        <div class="municipio-card" onclick="verDetalhes('${municipio.id_municipio}')">
+            <header>
+                <h3>${municipio.nome}</h3>
+                <span class="populacao">${formatarPopulacao(municipio.populacao_total_estimada_2022)} hab.</span>
+            </header>
+            <div class="indicadores">
+                <div class="indicador">
+                    <span class="label">Água:</span>
+                    <span class="valor ${getClasseIndicador(municipio.indice_atendimento_agua)}">
+                        ${formatarPercentual(municipio.indice_atendimento_agua)}
+                    </span>
+                </div>
+                <div class="indicador">
+                    <span class="label">Esgoto:</span>
+                    <span class="valor ${getClasseIndicador(municipio.indice_coleta_esgoto)}">
+                        ${formatarPercentual(municipio.indice_coleta_esgoto)}
+                    </span>
+                </div>
+                <div class="indicador">
+                    <span class="label">Tratamento:</span>
+                    <span class="valor ${getClasseIndicador(municipio.indice_tratamento_esgoto)}">
+                        ${formatarPercentual(municipio.indice_tratamento_esgoto)}
+                    </span>
+                </div>
+            </div>
+            <footer>
+                <span class="prestador">${municipio.nome_prestador_predominante || 'N/A'}</span>
+            </footer>
+        </div>
+    `).join('');
+    
+    atualizarPaginacao();
+}
+
+function atualizarPaginacao() {
+    const totalPaginas = Math.ceil(municipiosFiltrados.length / itensPorPagina);
+    const infoPagina = document.getElementById('info-paginacao');
+    const btnAnterior = document.getElementById('anterior');
+    const btnProximo = document.getElementById('proximo');
+    
+    infoPagina.textContent = `Página ${paginaAtual} de ${totalPaginas}`;
+    btnAnterior.disabled = paginaAtual <= 1;
+    btnProximo.disabled = paginaAtual >= totalPaginas;
+}
+
+function mudarPagina(direcao) {
+    const novaPagina = paginaAtual + direcao;
+    const totalPaginas = Math.ceil(municipiosFiltrados.length / itensPorPagina);
+    
+    if (novaPagina >= 1 && novaPagina <= totalPaginas) {
+        paginaAtual = novaPagina;
+        renderizarMunicipios();
+    }
+}
+
+function verDetalhes(municipioId) {
+    window.location.href = `/dashboard/municipios/${municipioId}`;
+}
+
+function formatarPopulacao(populacao) {
+    if (!populacao) return 'N/A';
+    return new Intl.NumberFormat('pt-BR').format(populacao);
+}
+
+function formatarPercentual(valor) {
+    if (valor === null || valor === undefined) return 'N/A';
+    return `${(valor * 100).toFixed(1)}%`;
+}
+
+function getClasseIndicador(valor) {
+    if (valor === null || valor === undefined) return 'indefinido';
+    if (valor >= 0.8) return 'excelente';
+    if (valor >= 0.6) return 'bom';
+    if (valor >= 0.4) return 'regular';
+    return 'ruim';
+}
+</script>
+
+<style>
+.filtros-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.municipios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.municipio-card {
+    border: 1px solid var(--muted-border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background: var(--card-background-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.municipio-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary);
+}
+
+.municipio-card header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.municipio-card h3 {
+    margin: 0;
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+.populacao {
+    font-size: 0.9rem;
+    color: var(--muted-color);
+}
+
+.indicadores {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.indicador {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.label {
+    font-size: 0.9rem;
+    color: var(--muted-color);
+}
+
+.valor {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.valor.excelente {
+    color: #28a745;
+}
+
+.valor.bom {
+    color: #17a2b8;
+}
+
+.valor.regular {
+    color: #ffc107;
+}
+
+.valor.ruim {
+    color: #dc3545;
+}
+
+.valor.indefinido {
+    color: var(--muted-color);
+}
+
+.prestador {
+    font-size: 0.8rem;
+    color: var(--muted-color);
+    font-style: italic;
+}
+
+.paginacao {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+#info-paginacao {
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.loading, .error, .no-results {
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted-color);
+}
+
+.error {
+    color: var(--error-color);
+}
+
+@media (max-width: 768px) {
+    .filtros-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .municipios-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %} 

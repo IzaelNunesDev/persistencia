@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}Recursos Hídricos - Saneamento Ceará{% endblock %}
+
+{% block content %}
+<div class="container">
+    <header class="hero">
+        <h1>💧 Recursos Hídricos</h1>
+        <p>Análise da eficiência hídrica e gestão de recursos no Ceará</p>
+    </header>
+
+    <main>
+        <!-- Filtros -->
+        <section>
+            <article>
+                <div class="filtros-container">
+                    <div class="form-group">
+                        <label for="ano">Ano:</label>
+                        <select id="ano" class="form-control">
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                            <option value="2019">2019</option>
+                        </select>
+                    </div>
+                    <button id="atualizar-btn" class="btn btn-primary">Atualizar Análise</button>
+                </div>
+            </article>
+        </section>
+
+        <!-- Indicadores Hídricos -->
+        <section class="grid">
+            <article>
+                <header>
+                    <h2>📊 Indicadores Hídricos</h2>
+                </header>
+                <div id="indicadores-hidricos" class="indicadores-grid">
+                    <div class="loading">Carregando...</div>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2>📈 Evolução dos Volumes</h2>
+                </header>
+                <div class="chart-container">
+                    <canvas id="evolucaoVolumesChart"></canvas>
+                </div>
+            </article>
+        </section>
+
+        <!-- Análise de Perdas -->
+        <section class="grid">
+            <article>
+                <header>
+                    <h2>🚰 Análise de Perdas</h2>
+                </header>
+                <div class="chart-container">
+                    <canvas id="perdasChart"></canvas>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2>🏆 Top 10 - Eficiência Hídrica</h2>
+                </header>
+                <div id="ranking-eficiencia" class="ranking-container">
+                    <div class="loading">Carregando...</div>
+                </div>
+            </article>
+        </section>
+
+        <!-- Balanço Hídrico -->
+        <section>
+            <article>
+                <header>
+                    <h2>⚖️ Balanço Hídrico</h2>
+                </header>
+                <div id="balanco-hidrico" class="balanco-container">
+                    <div class="loading">Carregando balanço hídrico...</div>
+                </div>
+            </article>
+        </section>
+
+        <!-- Análise Detalhada -->
+        <section>
+            <article>
+                <header>
+                    <h2>🔍 Análise Detalhada</h2>
+                </header>
+                <div id="analise-detalhada" class="analise-detalhada">
+                    <div class="loading">Carregando análise...</div>
+                </div>
+            </article>
+        </section>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    carregarAnaliseRecursosHidricos();
+    
+    document.getElementById('atualizar-btn').addEventListener('click', carregarAnaliseRecursosHidricos);
+    document.getElementById('ano').addEventListener('change', carregarAnaliseRecursosHidricos);
+});
+
+async function carregarAnaliseRecursosHidricos() {
+    const ano = document.getElementById('ano').value;
+    
+    try {
+        // Carregar dados de eficiência hídrica
+        const response = await fetch(`/api/v1/analises/eficiencia-hidrica?ano=${ano}`);
+        const dados = await response.json();
+        
+        // Atualizar indicadores
+        atualizarIndicadoresHidricos(dados);
+        
+        // Criar gráficos
+        criarGraficoEvolucaoVolumes(dados);
+        criarGraficoPerdas(dados);
+        
+        // Carregar ranking
+        carregarRankingEficiencia(ano);
+        
+        // Gerar balanço hídrico
+        gerarBalancoHidrico(dados);
+        
+        // Gerar análise detalhada
+        gerarAnaliseDetalhada(dados);
+        
+    } catch (error) {
+        console.error('Erro ao carregar análise de recursos hídricos:', error);
+    }
+}
+
+function atualizarIndicadoresHidricos(dados) {
+    const container = document.getElementById('indicadores-hidricos');
+    
+    const indicadores = [
+        {
+            nome: 'Volume Produzido',
+            valor: dados.volume_agua_produzido,
+            formato: 'volume',
+            cor: 'info'
+        },
+        {
+            nome: 'Volume Consumido',
+            valor: dados.volume_agua_consumido,
+            formato: 'volume',
+            cor: 'primary'
+        },
+        {
+            nome: 'Volume Faturado',
+            valor: dados.volume_agua_faturado,
+            formato: 'volume',
+            cor: 'success'
+        },
+        {
+            nome: 'Índice de Perdas',
+            valor: dados.indice_perdas,
+            formato: 'percentual',
+            cor: dados.indice_perdas <= 0.2 ? 'success' : 'warning'
+        },
+        {
+            nome: 'Eficiência Hídrica',
+            valor: dados.eficiencia_hidrica,
+            formato: 'percentual',
+            cor: dados.eficiencia_hidrica >= 0.8 ? 'success' : 'warning'
+        },
+        {
+            nome: 'Consumo per Capita',
+            valor: dados.consumo_per_capita,
+            formato: 'litros',
+            cor: 'info'
+        }
+    ];
+    
+    container.innerHTML = indicadores.map(ind => `
+        <div class="indicador-card ${ind.cor}">
+            <h3>${ind.nome}</h3>
+            <p class="valor">${formatarValor(ind.valor, ind.formato)}</p>
+        </div>
+    `).join('');
+}
+
+function criarGraficoEvolucaoVolumes(dados) {
+    const ctx = document.getElementById('evolucaoVolumesChart').getContext('2d');
+    
+    if (window.evolucaoVolumesChart) {
+        window.evolucaoVolumesChart.destroy();
+    }
+    
+    window.evolucaoVolumesChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dados.evolucao_anos || ['2019', '2020', '2021', '2022'],
+            datasets: [
+                {
+                    label: 'Volume Produzido (m³)',
+                    data: dados.evolucao_produzido || [0, 0, 0, 0],
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Volume Consumido (m³)',
+                    data: dados.evolucao_consumido || [0, 0, 0, 0],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Volume Faturado (m³)',
+                    data: dados.evolucao_faturado || [0, 0, 0, 0],
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Evolução dos Volumes Hídricos'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Volume (m³)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function criarGraficoPerdas(dados) {
+    const ctx = document.getElementById('perdasChart').getContext('2d');
+    
+    if (window.perdasChart) {
+        window.perdasChart.destroy();
+    }
+    
+    const volumePerdido = dados.volume_agua_produzido - dados.volume_agua_faturado;
+    
+    window.perdasChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Volume Faturado', 'Volume Perdido'],
+            datasets: [{
+                data: [
+                    dados.volume_agua_faturado || 0,
+                    volumePerdido || 0
+                ],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(255, 99, 132, 0.8)'
+                ],
+                borderColor: [
+                    'rgb(75, 192, 192)',
+                    'rgb(255, 99, 132)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Distribuição: Faturado vs Perdido'
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+async function carregarRankingEficiencia(ano) {
+    try {
+        const response = await fetch(`/api/v1/analises/ranking?indicador=eficiencia_hidrica&ano=${ano}&limit=10`);
+        const ranking = await response.json();
+        
+        const container = document.getElementById('ranking-eficiencia');
+        container.innerHTML = '';
+        
+        ranking.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'ranking-card';
+            card.innerHTML = `
+                <div class="ranking-position">${index + 1}</div>
+                <div class="ranking-info">
+                    <h3>${item.nome_municipio}</h3>
+                    <p>Eficiência: ${(item.eficiencia_hidrica * 100).toFixed(1)}%</p>
+                    <p>Perdas: ${(item.indice_perdas * 100).toFixed(1)}%</p>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar ranking de eficiência:', error);
+    }
+}
+
+function gerarBalancoHidrico(dados) {
+    const container = document.getElementById('balanco-hidrico');
+    
+    const volumePerdido = dados.volume_agua_produzido - dados.volume_agua_faturado;
+    const percentualPerdas = (volumePerdido / dados.volume_agua_produzido) * 100;
+    
+    const balanco = `
+        <div class="balanco-grid">
+            <div class="balanco-item entrada">
+                <h3>📥 Entradas</h3>
+                <div class="volume-item">
+                    <span class="label">Volume Produzido:</span>
+                    <span class="valor">${formatarVolume(dados.volume_agua_produzido)}</span>
+                </div>
+            </div>
+            
+            <div class="balanco-item saida">
+                <h3>📤 Saídas</h3>
+                <div class="volume-item">
+                    <span class="label">Volume Faturado:</span>
+                    <span class="valor">${formatarVolume(dados.volume_agua_faturado)}</span>
+                </div>
+                <div class="volume-item perda">
+                    <span class="label">Volume Perdido:</span>
+                    <span class="valor">${formatarVolume(volumePerdido)}</span>
+                </div>
+            </div>
+            
+            <div class="balanco-item resultado">
+                <h3>⚖️ Resultado</h3>
+                <div class="volume-item">
+                    <span class="label">Índice de Perdas:</span>
+                    <span class="valor ${percentualPerdas <= 20 ? 'bom' : 'ruim'}">${percentualPerdas.toFixed(1)}%</span>
+                </div>
+                <div class="volume-item">
+                    <span class="label">Eficiência Hídrica:</span>
+                    <span class="valor ${dados.eficiencia_hidrica >= 0.8 ? 'bom' : 'ruim'}">${(dados.eficiencia_hidrica * 100).toFixed(1)}%</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = balanco;
+}
+
+function gerarAnaliseDetalhada(dados) {
+    const container = document.getElementById('analise-detalhada');
+    
+    const analise = `
+        <div class="analise-grid">
+            <div class="analise-item">
+                <h3>💧 Gestão de Recursos</h3>
+                <p><strong>Volume Total Produzido:</strong> ${formatarVolume(dados.volume_agua_produzido)}</p>
+                <p><strong>Volume Total Consumido:</strong> ${formatarVolume(dados.volume_agua_consumido)}</p>
+                <p><strong>Volume Total Faturado:</strong> ${formatarVolume(dados.volume_agua_faturado)}</p>
+                <p><strong>Consumo per Capita:</strong> ${formatarLitros(dados.consumo_per_capita)}</p>
+            </div>
+            
+            <div class="analise-item">
+                <h3>🚰 Qualidade da Distribuição</h3>
+                <p><strong>Índice de Perdas:</strong> ${(dados.indice_perdas * 100).toFixed(1)}%</p>
+                <p><strong>Eficiência Hídrica:</strong> ${(dados.eficiencia_hidrica * 100).toFixed(1)}%</p>
+                <p><strong>Continuidade do Serviço:</strong> ${dados.continuidade_servico || 'N/A'} horas/dia</p>
+                <p><strong>Pressão Média:</strong> ${dados.pressao_media || 'N/A'} mca</p>
+            </div>
+            
+            <div class="analise-item">
+                <h3>📊 Indicadores de Desempenho</h3>
+                <p><strong>Meta de Perdas (SNIS):</strong> ≤ 20%</p>
+                <p><strong>Meta de Eficiência:</strong> ≥ 80%</p>
+                <p><strong>Consumo Ideal per Capita:</strong> 150 L/hab/dia</p>
+                <div class="status ${dados.indice_perdas <= 0.2 ? 'positivo' : 'negativo'}">
+                    ${dados.indice_perdas <= 0.2 ? '✅ Dentro da Meta' : '❌ Acima da Meta'}
+                </div>
+            </div>
+            
+            <div class="analise-item">
+                <h3>🎯 Recomendações</h3>
+                <ul>
+                    ${gerarRecomendacoesHidricas(dados)}
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = analise;
+}
+
+function gerarRecomendacoesHidricas(dados) {
+    const recomendacoes = [];
+    
+    if (dados.indice_perdas > 0.2) {
+        recomendacoes.push('<li>Implementar programa de redução de perdas</li>');
+        recomendacoes.push('<li>Realizar detecção e reparo de vazamentos</li>');
+        recomendacoes.push('<li>Modernizar rede de distribuição</li>');
+    }
+    
+    if (dados.eficiencia_hidrica < 0.8) {
+        recomendacoes.push('<li>Melhorar eficiência operacional</li>');
+        recomendacoes.push('<li>Otimizar pressão na rede</li>');
+        recomendacoes.push('<li>Implementar telemetria e controle</li>');
+    }
+    
+    if (dados.consumo_per_capita > 200) {
+        recomendacoes.push('<li>Implementar campanhas de conscientização</li>');
+        recomendacoes.push('<li>Instalar hidrômetros individuais</li>');
+        recomendacoes.push('<li>Estabelecer tarifação progressiva</li>');
+    }
+    
+    if (recomendacoes.length === 0) {
+        recomendacoes.push('<li>Manter as boas práticas atuais</li>');
+        recomendacoes.push('<li>Continuar monitorando indicadores</li>');
+        recomendacoes.push('<li>Investir em melhorias contínuas</li>');
+    }
+    
+    return recomendacoes.join('');
+}
+
+function formatarValor(valor, formato) {
+    if (valor === null || valor === undefined) return 'N/A';
+    
+    switch (formato) {
+        case 'volume':
+            return formatarVolume(valor);
+        case 'percentual':
+            return `${(valor * 100).toFixed(1)}%`;
+        case 'litros':
+            return formatarLitros(valor);
+        default:
+            return valor.toLocaleString('pt-BR');
+    }
+}
+
+function formatarVolume(valor) {
+    if (valor === null || valor === undefined) return 'N/A';
+    if (valor >= 1000000) {
+        return `${(valor / 1000000).toFixed(1)} M m³`;
+    } else if (valor >= 1000) {
+        return `${(valor / 1000).toFixed(1)} K m³`;
+    } else {
+        return `${valor.toFixed(0)} m³`;
+    }
+}
+
+function formatarLitros(valor) {
+    if (valor === null || valor === undefined) return 'N/A';
+    return `${valor.toFixed(0)} L/hab/dia`;
+}
+</script>
+
+<style>
+.filtros-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    align-items: end;
+}
+
+.indicadores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.indicador-card {
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--muted-border-color);
+}
+
+.indicador-card.info {
+    background: rgba(23, 162, 184, 0.1);
+    border-color: #17a2b8;
+}
+
+.indicador-card.primary {
+    background: rgba(0, 123, 255, 0.1);
+    border-color: #007bff;
+}
+
+.indicador-card.success {
+    background: rgba(40, 167, 69, 0.1);
+    border-color: #28a745;
+}
+
+.indicador-card.warning {
+    background: rgba(255, 193, 7, 0.1);
+    border-color: #ffc107;
+}
+
+.indicador-card h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: var(--muted-color);
+}
+
+.indicador-card .valor {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+.ranking-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.ranking-card {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid var(--muted-border-color);
+    border-radius: 0.5rem;
+    background: var(--card-background-color);
+}
+
+.ranking-position {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary);
+    margin-right: 1rem;
+    min-width: 2rem;
+}
+
+.ranking-info h3 {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.ranking-info p {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.8rem;
+    color: var(--muted-color);
+}
+
+.balanco-container {
+    margin-top: 1rem;
+}
+
+.balanco-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.balanco-item {
+    border: 1px solid var(--muted-border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    background: var(--card-background-color);
+}
+
+.balanco-item.entrada {
+    border-left: 4px solid #28a745;
+}
+
+.balanco-item.saida {
+    border-left: 4px solid #dc3545;
+}
+
+.balanco-item.resultado {
+    border-left: 4px solid #007bff;
+}
+
+.balanco-item h3 {
+    margin: 0 0 1rem 0;
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+.volume-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    background: var(--background-color);
+}
+
+.volume-item.perda {
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.volume-item .label {
+    font-weight: bold;
+    color: var(--muted-color);
+}
+
+.volume-item .valor {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.volume-item .valor.bom {
+    color: #28a745;
+}
+
+.volume-item .valor.ruim {
+    color: #dc3545;
+}
+
+.analise-detalhada {
+    margin-top: 1rem;
+}
+
+.analise-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.analise-item {
+    border: 1px solid var(--muted-border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    background: var(--card-background-color);
+}
+
+.analise-item h3 {
+    margin: 0 0 1rem 0;
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+.analise-item p {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.analise-item ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.analise-item li {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.status {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    text-align: center;
+    font-weight: bold;
+}
+
+.status.positivo {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.status.negativo {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.loading {
+    text-align: center;
+    color: var(--muted-color);
+    padding: 2rem;
+}
+
+@media (max-width: 768px) {
+    .filtros-container {
+        flex-direction: column;
+    }
+    
+    .indicadores-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .balanco-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .analise-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %} 

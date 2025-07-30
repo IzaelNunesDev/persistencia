@@ -13,15 +13,12 @@ def get_municipios(
     db: Session, 
     skip: int = 0, 
     limit: int = 100,
-    nome: Optional[str] = None,
-    microrregiao: Optional[str] = None
+    nome: Optional[str] = None
 ) -> List[models.Municipio]:
     query = db.query(models.Municipio)
     
     if nome:
         query = query.filter(models.Municipio.nome.ilike(f"%{nome}%"))
-    if microrregiao:
-        query = query.filter(models.Municipio.microrregiao == microrregiao)
     
     return query.offset(skip).limit(limit).all()
 
@@ -39,30 +36,15 @@ def create_municipio(db: Session, municipio: schemas.MunicipioCreate) -> models.
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao criar município: {str(e)}")
 
-# Funções para Capitais
-def get_capital(db: Session, municipio_id: str) -> Optional[models.Capital]:
-    return db.query(models.Capital).filter(models.Capital.municipio_id == municipio_id).first()
-
-def create_capital(db: Session, capital: schemas.CapitalCreate) -> models.Capital:
-    try:
-        db_capital = models.Capital(**capital.dict())
-        db.add(db_capital)
-        db.commit()
-        db.refresh(db_capital)
-        return db_capital
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Capital já existe para este município")
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao criar capital: {str(e)}")
-
 # Funções para Prestadores de Serviço
 def get_prestador(db: Session, prestador_id: int) -> Optional[models.PrestadorServico]:
     return db.query(models.PrestadorServico).filter(models.PrestadorServico.id == prestador_id).first()
 
 def get_prestador_by_sigla(db: Session, sigla: str) -> Optional[models.PrestadorServico]:
     return db.query(models.PrestadorServico).filter(models.PrestadorServico.sigla == sigla).first()
+
+def get_prestadores(db: Session, skip: int = 0, limit: int = 100) -> List[models.PrestadorServico]:
+    return db.query(models.PrestadorServico).offset(skip).limit(limit).all()
 
 def create_prestador(db: Session, prestador: schemas.PrestadorServicoCreate) -> models.PrestadorServico:
     try:
@@ -78,213 +60,386 @@ def create_prestador(db: Session, prestador: schemas.PrestadorServicoCreate) -> 
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao criar prestador: {str(e)}")
 
-# Funções para Dados de Saneamento
-def get_dados_saneamento_municipio(
+# Funções para Indicadores de Desempenho Anual
+def get_indicadores_municipio(
     db: Session, 
     municipio_id: str,
     skip: int = 0,
     limit: int = 100
-) -> List[models.DadosSaneamentoAnual]:
-    return db.query(models.DadosSaneamentoAnual)\
-        .filter(models.DadosSaneamentoAnual.municipio_id == municipio_id)\
-        .order_by(models.DadosSaneamentoAnual.ano.desc())\
+) -> List[models.IndicadoresDesempenhoAnual]:
+    return db.query(models.IndicadoresDesempenhoAnual)\
+        .filter(models.IndicadoresDesempenhoAnual.municipio_id == municipio_id)\
+        .order_by(models.IndicadoresDesempenhoAnual.ano.desc())\
         .offset(skip).limit(limit).all()
 
-def get_dados_saneamento_ano(
+def get_indicadores_ano(
     db: Session,
     ano: int,
     municipio_id: Optional[str] = None
-) -> List[models.DadosSaneamentoAnual]:
-    query = db.query(models.DadosSaneamentoAnual).filter(models.DadosSaneamentoAnual.ano == ano)
+) -> List[models.IndicadoresDesempenhoAnual]:
+    query = db.query(models.IndicadoresDesempenhoAnual).filter(models.IndicadoresDesempenhoAnual.ano == ano)
     
     if municipio_id:
-        query = query.filter(models.DadosSaneamentoAnual.municipio_id == municipio_id)
+        query = query.filter(models.IndicadoresDesempenhoAnual.municipio_id == municipio_id)
     
     return query.all()
 
-def create_dados_saneamento(
-    db: Session, 
-    dados: schemas.DadosSaneamentoCreate
-) -> models.DadosSaneamentoAnual:
+def get_indicador_atual_municipio(db: Session, municipio_id: str) -> Optional[models.IndicadoresDesempenhoAnual]:
+    return db.query(models.IndicadoresDesempenhoAnual)\
+        .filter(models.IndicadoresDesempenhoAnual.municipio_id == municipio_id)\
+        .order_by(models.IndicadoresDesempenhoAnual.ano.desc())\
+        .first()
+
+def create_indicadores(db: Session, indicadores: schemas.IndicadoresDesempenhoCreate) -> models.IndicadoresDesempenhoAnual:
     try:
-        db_dados = models.DadosSaneamentoAnual(**dados.dict())
-        db.add(db_dados)
+        db_indicadores = models.IndicadoresDesempenhoAnual(**indicadores.dict())
+        db.add(db_indicadores)
         db.commit()
-        db.refresh(db_dados)
-        return db_dados
+        db.refresh(db_indicadores)
+        return db_indicadores
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Dados de saneamento já existem para este ano/município/prestador")
+        raise HTTPException(status_code=400, detail="Indicadores já existem para este município/ano/prestador")
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao criar dados de saneamento: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao criar indicadores: {str(e)}")
 
-# Funções para Rankings
+# Funções para Recursos Hídricos Anual
+def get_recursos_hidricos(db: Session, indicador_id: int) -> Optional[models.RecursosHidricosAnual]:
+    return db.query(models.RecursosHidricosAnual)\
+        .filter(models.RecursosHidricosAnual.indicador_id == indicador_id).first()
+
+def create_recursos_hidricos(db: Session, recursos: schemas.RecursosHidricosCreate) -> models.RecursosHidricosAnual:
+    try:
+        db_recursos = models.RecursosHidricosAnual(**recursos.dict())
+        db.add(db_recursos)
+        db.commit()
+        db.refresh(db_recursos)
+        return db_recursos
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Recursos hídricos já existem para este indicador")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar recursos hídricos: {str(e)}")
+
+# Funções para Financeiro Anual
+def get_financeiro(db: Session, indicador_id: int) -> Optional[models.FinanceiroAnual]:
+    return db.query(models.FinanceiroAnual)\
+        .filter(models.FinanceiroAnual.indicador_id == indicador_id).first()
+
+def create_financeiro(db: Session, financeiro: schemas.FinanceiroCreate) -> models.FinanceiroAnual:
+    try:
+        db_financeiro = models.FinanceiroAnual(**financeiro.dict())
+        db.add(db_financeiro)
+        db.commit()
+        db.refresh(db_financeiro)
+        return db_financeiro
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Dados financeiros já existem para este indicador")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar dados financeiros: {str(e)}")
+
+# Funções de análise e relatórios
 def get_ranking_indicador(
     db: Session,
     ano: int,
     indicador: str,
     ordem: str = "desc",
-    limit: int = 10
-) -> List[dict]:
+    limit: int = 10,
+    municipio_id: Optional[str] = None
+) -> dict:
     """
-    Retorna ranking dos municípios para um indicador específico
+    Retorna ranking de municípios por indicador específico
     """
-    # Mapeamento de indicadores para colunas
-    indicadores_map = {
-        "indice_atendimento_agua": models.DadosSaneamentoAnual.indice_atendimento_agua,
-        "indice_coleta_esgoto": models.DadosSaneamentoAnual.indice_coleta_esgoto,
-        "indice_tratamento_esgoto": models.DadosSaneamentoAnual.indice_tratamento_esgoto,
-        "indice_perda_faturamento": models.DadosSaneamentoAnual.indice_perda_faturamento,
-        "volume_agua_produzido": models.DadosSaneamentoAnual.volume_agua_produzido,
-        "volume_esgoto_tratado": models.DadosSaneamentoAnual.volume_esgoto_tratado,
-        "receita_operacional_total": models.DadosSaneamentoAnual.receita_operacional_total,
-        "investimento_total": models.DadosSaneamentoAnual.investimento_total
+    # Mapear nome do indicador para coluna
+    indicador_map = {
+        "indice_atendimento_agua": models.IndicadoresDesempenhoAnual.indice_atendimento_agua,
+        "indice_coleta_esgoto": models.IndicadoresDesempenhoAnual.indice_coleta_esgoto,
+        "indice_tratamento_esgoto": models.IndicadoresDesempenhoAnual.indice_tratamento_esgoto,
+        "indice_perda_faturamento": models.IndicadoresDesempenhoAnual.indice_perda_faturamento
     }
     
-    if indicador not in indicadores_map:
-        raise ValueError(f"Indicador '{indicador}' não suportado")
+    if indicador not in indicador_map:
+        raise HTTPException(status_code=400, detail="Indicador inválido")
     
-    coluna = indicadores_map[indicador]
-    order_func = desc if ordem.lower() == "desc" else asc
+    coluna = indicador_map[indicador]
+    order_func = desc if ordem == "desc" else asc
     
     query = db.query(
-        models.Municipio,
-        coluna.label('valor')
-    ).join(
-        models.DadosSaneamentoAnual,
-        models.Municipio.id_municipio == models.DadosSaneamentoAnual.municipio_id
-    ).filter(
-        models.DadosSaneamentoAnual.ano == ano,
+        models.IndicadoresDesempenhoAnual,
+        models.Municipio
+    ).join(models.Municipio).filter(
+        models.IndicadoresDesempenhoAnual.ano == ano,
         coluna.isnot(None)
-    ).order_by(
-        order_func(coluna)
-    ).limit(limit)
+    ).order_by(order_func(coluna))
     
-    results = query.all()
+    if municipio_id:
+        # Buscar posição específica do município
+        municipio_data = query.filter(
+            models.IndicadoresDesempenhoAnual.municipio_id == municipio_id
+        ).first()
+        
+        if not municipio_data:
+            return {"posicao": None, "total": 0, "valor": None}
+        
+        # Contar posição
+        posicao = query.filter(order_func(coluna) > order_func(municipio_data[0].__getattribute__(indicador))).count() + 1
+        total = query.count()
+        
+        return {
+            "posicao": posicao,
+            "total": total,
+            "valor": municipio_data[0].__getattribute__(indicador)
+        }
+    
+    # Retornar ranking completo
+    resultados = query.limit(limit).all()
     
     ranking = []
-    for i, (municipio, valor) in enumerate(results, 1):
+    for i, (indicador_obj, municipio) in enumerate(resultados, 1):
+        valor = indicador_obj.__getattribute__(indicador)
+        # Tratar valores None e NaN
+        if valor is None or (hasattr(valor, 'isnan') and valor.isnan()):
+            valor = None
+        else:
+            valor = float(valor)
+        
         ranking.append({
             "posicao": i,
-            "municipio": municipio,
-            "valor": valor,
-            "indicador": indicador
+            "municipio": {
+                "id_municipio": municipio.id_municipio,
+                "nome": municipio.nome,
+                "sigla_uf": municipio.sigla_uf
+            },
+            "valor": valor
         })
     
-    return ranking
+    return {
+        "ano": ano,
+        "indicador": indicador,
+        "ranking": ranking
+    }
 
-# Funções para Evolução de Indicadores
 def get_evolucao_indicadores(
     db: Session,
     municipio_id: str,
-    indicadores: List[str]
+    indicadores: List[str] = None
 ) -> dict:
     """
-    Retorna a evolução de múltiplos indicadores para um município
+    Retorna evolução temporal dos indicadores de um município
     """
-    indicadores_map = {
-        "indice_atendimento_agua": models.DadosSaneamentoAnual.indice_atendimento_agua,
-        "indice_coleta_esgoto": models.DadosSaneamentoAnual.indice_coleta_esgoto,
-        "indice_tratamento_esgoto": models.DadosSaneamentoAnual.indice_tratamento_esgoto,
-        "indice_perda_faturamento": models.DadosSaneamentoAnual.indice_perda_faturamento,
-        "volume_agua_produzido": models.DadosSaneamentoAnual.volume_agua_produzido,
-        "volume_esgoto_tratado": models.DadosSaneamentoAnual.volume_esgoto_tratado,
-        "receita_operacional_total": models.DadosSaneamentoAnual.receita_operacional_total,
-        "investimento_total": models.DadosSaneamentoAnual.investimento_total
-    }
+    if indicadores is None:
+        indicadores = ["indice_atendimento_agua", "indice_coleta_esgoto", "indice_tratamento_esgoto"]
     
-    # Validar indicadores
-    for indicador in indicadores:
-        if indicador not in indicadores_map:
-            raise ValueError(f"Indicador '{indicador}' não suportado")
+    query = db.query(models.IndicadoresDesempenhoAnual)\
+        .filter(models.IndicadoresDesempenhoAnual.municipio_id == municipio_id)\
+        .order_by(models.IndicadoresDesempenhoAnual.ano.asc())
     
-    # Buscar dados do município
-    dados = db.query(models.DadosSaneamentoAnual)\
-        .filter(models.DadosSaneamentoAnual.municipio_id == municipio_id)\
-        .order_by(models.DadosSaneamentoAnual.ano.asc())\
-        .all()
+    dados = query.all()
     
-    evolucao = {}
-    for indicador in indicadores:
-        evolucao[indicador] = []
-        for dado in dados:
-            valor = getattr(dado, indicador)
-            if valor is not None:
-                evolucao[indicador].append({
-                    "ano": dado.ano,
-                    "valor": valor
-                })
-    
-    return evolucao
-
-# Funções para Comparativo
-def get_comparativo_municipios(
-    db: Session,
-    ano: int,
-    ids_municipios: List[str]
-) -> List[dict]:
-    """
-    Compara os dados de múltiplos municípios em um ano específico
-    """
-    dados = db.query(models.DadosSaneamentoAnual)\
-        .join(models.Municipio)\
-        .filter(
-            models.DadosSaneamentoAnual.ano == ano,
-            models.DadosSaneamentoAnual.municipio_id.in_(ids_municipios)
-        ).all()
-    
-    comparativo = []
+    evolucao = []
     for dado in dados:
-        comparativo.append({
-            "municipio": dado.municipio,
-            "dados": dado
-        })
+        item = {"ano": dado.ano}
+        for indicador in indicadores:
+            item[indicador] = getattr(dado, indicador)
+        evolucao.append(item)
     
-    return comparativo
+    return {
+        "municipio_id": municipio_id,
+        "evolucao": evolucao
+    }
 
-# Funções para Sustentabilidade Financeira
-def get_sustentabilidade_financeira(
-    db: Session,
-    ano: int
-) -> dict:
+def get_indicadores_principais(db: Session, ano: int = None) -> dict:
     """
-    Retorna municípios com receita > despesa e os que têm despesa > receita
+    Retorna médias dos indicadores principais
+    """
+    import math
+    
+    if ano is None:
+        # Usar ano mais recente
+        ano = db.query(func.max(models.IndicadoresDesempenhoAnual.ano)).scalar()
+    
+    if not ano:
+        return {
+            "media_atendimento_agua": 0,
+            "media_coleta_esgoto": 0,
+            "media_tratamento_esgoto": 0,
+            "media_perda_faturamento": 0
+        }
+    
+    medias = db.query(
+        func.avg(models.IndicadoresDesempenhoAnual.indice_atendimento_agua).label("media_agua"),
+        func.avg(models.IndicadoresDesempenhoAnual.indice_coleta_esgoto).label("media_coleta"),
+        func.avg(models.IndicadoresDesempenhoAnual.indice_tratamento_esgoto).label("media_tratamento"),
+        func.avg(models.IndicadoresDesempenhoAnual.indice_perda_faturamento).label("media_perda")
+    ).filter(models.IndicadoresDesempenhoAnual.ano == ano).first()
+    
+    # Tratar valores None e NaN
+    def safe_float(value):
+        if value is None or math.isnan(value):
+            return None
+        return float(value)
+    
+    return {
+        "media_atendimento_agua": safe_float(medias.media_agua),
+        "media_coleta_esgoto": safe_float(medias.media_coleta),
+        "media_tratamento_esgoto": safe_float(medias.media_tratamento),
+        "media_perda_faturamento": safe_float(medias.media_perda)
+    }
+
+def get_evolucao_temporal(db: Session) -> dict:
+    """
+    Retorna evolução temporal dos indicadores médios
+    """
+    import math
+    
+    dados = db.query(
+        models.IndicadoresDesempenhoAnual.ano,
+        func.avg(models.IndicadoresDesempenhoAnual.indice_atendimento_agua).label("agua"),
+        func.avg(models.IndicadoresDesempenhoAnual.indice_coleta_esgoto).label("coleta"),
+        func.avg(models.IndicadoresDesempenhoAnual.indice_tratamento_esgoto).label("tratamento")
+    ).group_by(models.IndicadoresDesempenhoAnual.ano)\
+     .order_by(models.IndicadoresDesempenhoAnual.ano.asc()).all()
+    
+    anos = []
+    agua = []
+    coleta = []
+    tratamento = []
+    
+    for dado in dados:
+        anos.append(dado.ano)
+        
+        # Tratar valores None e NaN
+        agua_val = dado.agua
+        if agua_val is None or math.isnan(agua_val):
+            agua.append(None)
+        else:
+            agua.append(float(agua_val))
+        
+        coleta_val = dado.coleta
+        if coleta_val is None or math.isnan(coleta_val):
+            coleta.append(None)
+        else:
+            coleta.append(float(coleta_val))
+        
+        tratamento_val = dado.tratamento
+        if tratamento_val is None or math.isnan(tratamento_val):
+            tratamento.append(None)
+        else:
+            tratamento.append(float(tratamento_val))
+    
+    return {
+        "anos": anos,
+        "atendimento_agua": agua,
+        "coleta_esgoto": coleta,
+        "tratamento_esgoto": tratamento
+    }
+
+def get_ultimo_ano_dados(db: Session) -> int:
+    """
+    Retorna o ano mais recente com dados
+    """
+    return db.query(func.max(models.IndicadoresDesempenhoAnual.ano)).scalar() or 2022
+
+def get_municipios_comparacao(db: Session, ano: int) -> List[dict]:
+    """
+    Retorna dados para comparação entre municípios
     """
     dados = db.query(
+        models.IndicadoresDesempenhoAnual,
+        models.Municipio
+    ).join(models.Municipio)\
+     .filter(models.IndicadoresDesempenhoAnual.ano == ano)\
+     .all()
+    
+    return [
+        {
+            "municipio": municipio,
+            "indicadores": indicadores
+        }
+        for indicadores, municipio in dados
+    ]
+
+def get_analise_sustentabilidade_financeira(db: Session, ano: int) -> dict:
+    """
+    Retorna análise de sustentabilidade financeira
+    """
+    dados = db.query(
+        models.IndicadoresDesempenhoAnual,
         models.Municipio,
-        models.DadosSaneamentoAnual.receita_operacional_total,
-        models.DadosSaneamentoAnual.despesa_total_servicos
-    ).join(
-        models.DadosSaneamentoAnual,
-        models.Municipio.id_municipio == models.DadosSaneamentoAnual.municipio_id
-    ).filter(
-        models.DadosSaneamentoAnual.ano == ano,
-        models.DadosSaneamentoAnual.receita_operacional_total.isnot(None),
-        models.DadosSaneamentoAnual.despesa_total_servicos.isnot(None)
-    ).all()
+        models.FinanceiroAnual
+    ).join(models.Municipio)\
+     .outerjoin(models.FinanceiroAnual)\
+     .filter(models.IndicadoresDesempenhoAnual.ano == ano)\
+     .all()
     
     sustentaveis = []
     insustentaveis = []
     
-    for municipio, receita, despesa in dados:
-        saldo = receita - despesa
-        sustentavel = receita > despesa
-        
-        item = {
-            "municipio": municipio,
-            "receita": receita,
-            "despesa": despesa,
-            "saldo": saldo,
-            "sustentavel": sustentavel
-        }
-        
-        if sustentavel:
-            sustentaveis.append(item)
-        else:
-            insustentaveis.append(item)
+    for indicadores, municipio, financeiro in dados:
+        if financeiro:
+            receita = financeiro.receita_operacional_total or 0
+            despesa = financeiro.despesa_total_servicos or 0
+            saldo = receita - despesa
+            sustentavel = saldo > 0
+            
+            item = {
+                "municipio": municipio,
+                "receita": receita,
+                "despesa": despesa,
+                "saldo": saldo,
+                "sustentavel": sustentavel
+            }
+            
+            if sustentavel:
+                sustentaveis.append(item)
+            else:
+                insustentaveis.append(item)
     
     return {
+        "ano": ano,
         "sustentaveis": sustentaveis,
         "insustentaveis": insustentaveis
+    }
+
+def get_analise_eficiencia_hidrica(db: Session, ano: int) -> dict:
+    """
+    Retorna análise de eficiência hídrica
+    """
+    dados = db.query(
+        models.IndicadoresDesempenhoAnual,
+        models.Municipio,
+        models.RecursosHidricosAnual
+    ).join(models.Municipio)\
+     .outerjoin(models.RecursosHidricosAnual)\
+     .filter(models.IndicadoresDesempenhoAnual.ano == ano)\
+     .all()
+    
+    eficiencias = []
+    
+    for indicadores, municipio, recursos in dados:
+        if recursos and recursos.volume_agua_produzido:
+            indice_perda = indicadores.indice_perda_faturamento or 0
+            volume_produzido = recursos.volume_agua_produzido
+            volume_faturado = recursos.volume_agua_faturado or 0
+            eficiencia = ((volume_faturado / volume_produzido) * 100) if volume_produzido > 0 else 0
+            
+            eficiencias.append({
+                "municipio": municipio,
+                "indice_perda": indice_perda,
+                "volume_produzido": volume_produzido,
+                "volume_faturado": volume_faturado,
+                "eficiencia": eficiencia
+            })
+    
+    # Ordenar por eficiência
+    eficiencias.sort(key=lambda x: x["eficiencia"], reverse=True)
+    
+    return {
+        "ano": ano,
+        "mais_eficientes": eficiencias[:10],
+        "menos_eficientes": eficiencias[-10:] if len(eficiencias) > 10 else []
     } 

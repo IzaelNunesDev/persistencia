@@ -21,7 +21,7 @@ COLUMN_MAPPING = {
     'investimento_total_prestador': 'investimento_total'
 }
 
-def processar_csv_snis(csv_path: str, output_dir: str = "data"):
+def processar_csv_snis(csv_path: str, output_dir: str = "../data"):
     """
     Processa o CSV do SNIS e extrai dados do Ceará
     """

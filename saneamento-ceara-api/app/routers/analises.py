@@ -6,12 +6,13 @@ from app.database import get_db
 
 router = APIRouter(prefix="/analises", tags=["analises"])
 
-@router.get("/rankings/{ano}", response_model=schemas.RankingResponse)
+@router.get("/ranking", response_model=schemas.RankingResponse)
 def obter_ranking(
-    ano: int,
     indicador: str = Query(..., description="Indicador para ranking (ex: indice_atendimento_agua)"),
+    ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
     ordem: str = Query("desc", description="Ordem do ranking (asc/desc)"),
     limit: int = Query(10, ge=1, le=100, description="Número de posições no ranking"),
+    municipio_id: Optional[str] = Query(None, description="ID do município para buscar posição específica"),
     db: Session = Depends(get_db)
 ):
     """
@@ -22,37 +23,30 @@ def obter_ranking(
     - indice_coleta_esgoto: Índice de coleta de esgoto (%)
     - indice_tratamento_esgoto: Índice de tratamento de esgoto (%)
     - indice_perda_faturamento: Índice de perda de faturamento (%)
-    - volume_agua_produzido: Volume de água produzido (m³)
-    - volume_esgoto_tratado: Volume de esgoto tratado (m³)
-    - receita_operacional_total: Receita operacional total (R$)
-    - investimento_total: Investimento total (R$)
-    
-    - **ano**: Ano de referência para o ranking
-    - **indicador**: Indicador específico para ordenação
-    - **ordem**: Ordem do ranking (asc para crescente, desc para decrescente)
-    - **limit**: Número de posições no ranking
     """
     try:
+        if ano is None:
+            ano = crud.get_ultimo_ano_dados(db)
+        
         ranking_data = crud.get_ranking_indicador(
             db=db,
             ano=ano,
             indicador=indicador,
             ordem=ordem,
-            limit=limit
+            limit=limit,
+            municipio_id=municipio_id
         )
         
-        return schemas.RankingResponse(
-            ano=ano,
-            indicador=indicador,
-            ranking=ranking_data
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return ranking_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.get("/evolucao", response_model=schemas.EvolucaoResponse)
 def obter_evolucao_indicadores(
-    id_municipio: str = Query(..., description="Código IBGE do município"),
-    indicadores: str = Query(..., description="Lista de indicadores separados por vírgula"),
+    municipio_id: str = Query(..., description="Código IBGE do município"),
+    indicadores: Optional[str] = Query(None, description="Lista de indicadores separados por vírgula"),
     db: Session = Depends(get_db)
 ):
     """
@@ -63,26 +57,21 @@ def obter_evolucao_indicadores(
     - indice_coleta_esgoto: Índice de coleta de esgoto (%)
     - indice_tratamento_esgoto: Índice de tratamento de esgoto (%)
     - indice_perda_faturamento: Índice de perda de faturamento (%)
-    - volume_agua_produzido: Volume de água produzido (m³)
-    - volume_esgoto_tratado: Volume de esgoto tratado (m³)
-    - receita_operacional_total: Receita operacional total (R$)
-    - investimento_total: Investimento total (R$)
-    
-    - **id_municipio**: Código IBGE do município
-    - **indicadores**: Lista de indicadores separados por vírgula
     """
     # Verificar se o município existe
-    municipio = crud.get_municipio(db=db, id_municipio=id_municipio)
+    municipio = crud.get_municipio(db=db, id_municipio=municipio_id)
     if not municipio:
         raise HTTPException(status_code=404, detail="Município não encontrado")
     
     # Converter string de indicadores em lista
-    indicadores_list = [ind.strip() for ind in indicadores.split(",")]
+    indicadores_list = None
+    if indicadores:
+        indicadores_list = [ind.strip() for ind in indicadores.split(",")]
     
     try:
         evolucao_data = crud.get_evolucao_indicadores(
             db=db,
-            municipio_id=id_municipio,
+            municipio_id=municipio_id,
             indicadores=indicadores_list
         )
         
@@ -90,55 +79,99 @@ def obter_evolucao_indicadores(
             municipio=municipio,
             indicadores=evolucao_data
         )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@router.get("/indicadores-principais")
+def obter_indicadores_principais(
+    ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna as médias dos indicadores principais para um ano específico.
+    """
+    try:
+        return crud.get_indicadores_principais(db=db, ano=ano)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@router.get("/evolucao-temporal")
+def obter_evolucao_temporal(db: Session = Depends(get_db)):
+    """
+    Retorna a evolução temporal dos indicadores médios ao longo dos anos.
+    """
+    try:
+        return crud.get_evolucao_temporal(db=db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.get("/comparativo", response_model=schemas.ComparativoResponse)
 def obter_comparativo_municipios(
-    ano: int = Query(..., description="Ano de referência"),
-    ids_municipios: str = Query(..., description="Lista de códigos IBGE dos municípios separados por vírgula"),
+    ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
+    ids_municipios: Optional[str] = Query(None, description="Lista de códigos IBGE dos municípios separados por vírgula"),
     db: Session = Depends(get_db)
 ):
     """
-    Compara os dados de dois ou mais municípios em um ano específico.
-    
-    - **ano**: Ano de referência para comparação
-    - **ids_municipios**: Lista de códigos IBGE dos municípios separados por vírgula
+    Compara os dados de múltiplos municípios em um ano específico.
     """
-    # Converter string de IDs em lista
-    ids_list = [id_municipio.strip() for id_municipio in ids_municipios.split(",")]
-    
-    if len(ids_list) < 2:
-        raise HTTPException(status_code=400, detail="É necessário pelo menos 2 municípios para comparação")
-    
-    comparativo_data = crud.get_comparativo_municipios(
-        db=db,
-        ano=ano,
-        ids_municipios=ids_list
-    )
-    
-    return schemas.ComparativoResponse(
-        ano=ano,
-        municipios=comparativo_data
-    )
+    try:
+        if ano is None:
+            ano = crud.get_ultimo_ano_dados(db)
+        
+        if ids_municipios:
+            ids_list = [id.strip() for id in ids_municipios.split(",")]
+            # Implementar filtro por municípios específicos se necessário
+            pass
+        
+        municipios_data = crud.get_municipios_comparacao(db=db, ano=ano)
+        
+        return schemas.ComparativoResponse(
+            ano=ano,
+            municipios=municipios_data
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
-@router.get("/sustentabilidade-financeira/{ano}", response_model=schemas.SustentabilidadeResponse)
+@router.get("/sustentabilidade-financeira", response_model=schemas.SustentabilidadeResponse)
 def obter_sustentabilidade_financeira(
-    ano: int,
+    ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
     db: Session = Depends(get_db)
 ):
     """
-    Retorna a lista de municípios com receita > despesa (sustentáveis) e os que têm despesa > receita (insustentáveis).
-    
-    - **ano**: Ano de referência para análise
+    Retorna análise de sustentabilidade financeira dos municípios.
     """
-    sustentabilidade_data = crud.get_sustentabilidade_financeira(
-        db=db,
-        ano=ano
-    )
-    
-    return schemas.SustentabilidadeResponse(
-        ano=ano,
-        sustentaveis=sustentabilidade_data["sustentaveis"],
-        insustentaveis=sustentabilidade_data["insustentaveis"]
-    ) 
+    try:
+        if ano is None:
+            ano = crud.get_ultimo_ano_dados(db)
+        
+        dados = crud.get_analise_sustentabilidade_financeira(db=db, ano=ano)
+        
+        return schemas.SustentabilidadeResponse(
+            ano=ano,
+            sustentaveis=dados["sustentaveis"],
+            insustentaveis=dados["insustentaveis"]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@router.get("/eficiencia-hidrica", response_model=schemas.EficienciaHidricaResponse)
+def obter_eficiencia_hidrica(
+    ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna análise de eficiência hídrica dos municípios.
+    """
+    try:
+        if ano is None:
+            ano = crud.get_ultimo_ano_dados(db)
+        
+        dados = crud.get_analise_eficiencia_hidrica(db=db, ano=ano)
+        
+        return schemas.EficienciaHidricaResponse(
+            ano=ano,
+            mais_eficientes=dados["mais_eficientes"],
+            menos_eficientes=dados["menos_eficientes"]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}") 

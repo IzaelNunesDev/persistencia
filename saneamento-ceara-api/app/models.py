@@ -8,24 +8,15 @@ class Municipio(Base):
     
     id_municipio = Column(String(7), primary_key=True, index=True)
     nome = Column(String(100), nullable=False)
-    microrregiao = Column(String(100))
-    mesorregiao = Column(String(100))
-    ddd = Column(String(2))
+    sigla_uf = Column(String(2), nullable=False, default="CE")
+    populacao_urbana_estimada_2022 = Column(Integer)
+    populacao_total_estimada_2022 = Column(Integer)
+    quantidade_sedes_agua = Column(Integer)
+    quantidade_sedes_esgoto = Column(Integer)
+    nome_prestador_predominante = Column(String(255))
     
     # Relacionamentos
-    capital = relationship("Capital", back_populates="municipio", uselist=False)
-    dados_saneamento = relationship("DadosSaneamentoAnual", back_populates="municipio")
-
-class Capital(Base):
-    __tablename__ = "capitais"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    municipio_id = Column(String(7), ForeignKey("municipios.id_municipio"), unique=True, nullable=False)
-    data_fundacao = Column(Date)
-    prefeito_atual = Column(String(100))
-    
-    # Relacionamentos
-    municipio = relationship("Municipio", back_populates="capital")
+    indicadores = relationship("IndicadoresDesempenhoAnual", back_populates="municipio")
 
 class PrestadorServico(Base):
     __tablename__ = "prestadores_servico"
@@ -34,12 +25,16 @@ class PrestadorServico(Base):
     sigla = Column(String(20), unique=True, nullable=False)
     nome = Column(String(255), nullable=False)
     natureza_juridica = Column(String(100))
+    total_investido_historico = Column(Float)
+    media_arrecadacao_anual = Column(Float)
+    quantidade_municipios_atendidos = Column(Integer)
+    ano_primeiro_registro = Column(Integer)
     
     # Relacionamentos
-    dados_saneamento = relationship("DadosSaneamentoAnual", back_populates="prestador")
+    indicadores = relationship("IndicadoresDesempenhoAnual", back_populates="prestador")
 
-class DadosSaneamentoAnual(Base):
-    __tablename__ = "dados_saneamento_anuais"
+class IndicadoresDesempenhoAnual(Base):
+    __tablename__ = "indicadores_desempenho_anuais"
     
     id = Column(Integer, primary_key=True, index=True)
     ano = Column(Integer, nullable=False)
@@ -47,31 +42,70 @@ class DadosSaneamentoAnual(Base):
     prestador_id = Column(Integer, ForeignKey("prestadores_servico.id"), nullable=False)
     
     # Dados populacionais
-    populacao_total_atendida_agua = Column(Integer)
-    populacao_total_atendida_esgoto = Column(Integer)
+    populacao_atendida_agua = Column(Integer)
+    populacao_atendida_esgoto = Column(Integer)
     
-    # Índices de atendimento
+    # Índices de desempenho
     indice_atendimento_agua = Column(Float)
     indice_coleta_esgoto = Column(Float)
     indice_tratamento_esgoto = Column(Float)
     indice_perda_faturamento = Column(Float)
     
-    # Volumes
-    volume_agua_produzido = Column(Float)
-    volume_esgoto_tratado = Column(Float)
-    
-    # Dados financeiros
-    receita_operacional_total = Column(Float)
-    despesa_total_servicos = Column(Float)
-    investimento_total = Column(Float)
-    
     # Relacionamentos
-    municipio = relationship("Municipio", back_populates="dados_saneamento")
-    prestador = relationship("PrestadorServico", back_populates="dados_saneamento")
+    municipio = relationship("Municipio", back_populates="indicadores")
+    prestador = relationship("PrestadorServico", back_populates="indicadores")
+    recursos_hidricos = relationship("RecursosHidricosAnual", back_populates="indicador", uselist=False)
+    financeiro = relationship("FinanceiroAnual", back_populates="indicador", uselist=False)
     
     # Índices para otimização
     __table_args__ = (
         Index('idx_municipio_ano', 'municipio_id', 'ano'),
+        Index('idx_prestador_ano', 'prestador_id', 'ano'),
         Index('idx_ano', 'ano'),
         UniqueConstraint('ano', 'municipio_id', 'prestador_id', name='uq_ano_municipio_prestador')
-    ) 
+    )
+
+class RecursosHidricosAnual(Base):
+    __tablename__ = "recursos_hidricos_anuais"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    indicador_id = Column(Integer, ForeignKey("indicadores_desempenho_anuais.id"), unique=True, nullable=False)
+    
+    # Volumes de água
+    volume_agua_produzido = Column(Float)
+    volume_agua_consumido = Column(Float)
+    volume_agua_faturado = Column(Float)
+    
+    # Volumes de esgoto
+    volume_esgoto_coletado = Column(Float)
+    volume_esgoto_tratado = Column(Float)
+    
+    # Consumo energético
+    consumo_eletrico_sistemas_agua = Column(Float)
+    
+    # Relacionamentos
+    indicador = relationship("IndicadoresDesempenhoAnual", back_populates="recursos_hidricos")
+
+class FinanceiroAnual(Base):
+    __tablename__ = "financeiro_anuais"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    indicador_id = Column(Integer, ForeignKey("indicadores_desempenho_anuais.id"), unique=True, nullable=False)
+    
+    # Receitas
+    receita_operacional_total = Column(Float)
+    
+    # Despesas
+    despesa_exploracao = Column(Float)
+    despesa_pessoal = Column(Float)
+    despesa_energia = Column(Float)
+    despesa_total_servicos = Column(Float)
+    
+    # Investimentos
+    investimento_total_prestador = Column(Float)
+    
+    # Contas a receber
+    credito_a_receber = Column(Float)
+    
+    # Relacionamentos
+    indicador = relationship("IndicadoresDesempenhoAnual", back_populates="financeiro") 

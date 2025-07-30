@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}Análises e Rankings - Saneamento Ceará{% endblock %}
+
+{% block content %}
+<div class="container">
+    <header class="hero">
+        <h1>📊 Análises e Rankings</h1>
+        <p>Análises comparativas e rankings dos municípios do Ceará</p>
+    </header>
+
+    <main>
+        <!-- Seção de Rankings -->
+        <section class="grid">
+            <article>
+                <header>
+                    <h2>🏆 Top 5 - Atendimento de Água</h2>
+                </header>
+                <div id="ranking-agua" class="ranking-container">
+                    <div class="loading">Carregando...</div>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2>🏆 Top 5 - Coleta de Esgoto</h2>
+                </header>
+                <div id="ranking-esgoto" class="ranking-container">
+                    <div class="loading">Carregando...</div>
+                </div>
+            </article>
+        </section>
+
+        <!-- Seção de Análises -->
+        <section class="grid">
+            <article>
+                <header>
+                    <h2>📈 Evolução Temporal</h2>
+                </header>
+                <div class="chart-container">
+                    <canvas id="evolucaoChart"></canvas>
+                </div>
+            </article>
+
+            <article>
+                <header>
+                    <h2>📊 Indicadores Principais</h2>
+                </header>
+                <div id="indicadores-principais" class="indicadores-grid">
+                    <div class="loading">Carregando...</div>
+                </div>
+            </article>
+        </section>
+
+        <!-- Seção de Comparações -->
+        <section>
+            <article>
+                <header>
+                    <h2>🔍 Comparativo entre Municípios</h2>
+                </header>
+                <div class="comparativo-container">
+                    <div class="form-group">
+                        <label for="municipio1">Município 1:</label>
+                        <select id="municipio1" class="form-control">
+                            <option value="">Selecione um município</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="municipio2">Município 2:</label>
+                        <select id="municipio2" class="form-control">
+                            <option value="">Selecione um município</option>
+                        </select>
+                    </div>
+                    <button id="comparar-btn" class="btn btn-primary">Comparar</button>
+                </div>
+                <div id="resultado-comparacao" class="comparacao-resultado"></div>
+            </article>
+        </section>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar rankings
+    carregarRanking('agua', 'indice_atendimento_agua');
+    carregarRanking('esgoto', 'indice_coleta_esgoto');
+    
+    // Carregar evolução temporal
+    carregarEvolucaoTemporal();
+    
+    // Carregar indicadores principais
+    carregarIndicadoresPrincipais();
+    
+    // Carregar lista de municípios para comparação
+    carregarMunicipios();
+});
+
+async function carregarRanking(tipo, indicador) {
+    try {
+        const response = await fetch(`/api/v1/analises/ranking?indicador=${indicador}&limit=5`);
+        const data = await response.json();
+        
+        const container = document.getElementById(`ranking-${tipo}`);
+        container.innerHTML = '';
+        
+        data.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'ranking-card';
+            card.innerHTML = `
+                <div class="ranking-position">${index + 1}</div>
+                <div class="ranking-info">
+                    <h3>${item.nome_municipio}</h3>
+                    <p>${(item[indicador] * 100).toFixed(1)}%</p>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar ranking:', error);
+    }
+}
+
+async function carregarEvolucaoTemporal() {
+    try {
+        const response = await fetch('/api/v1/analises/evolucao-temporal');
+        const data = await response.json();
+        
+        const ctx = document.getElementById('evolucaoChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.anos,
+                datasets: [
+                    {
+                        label: 'Atendimento de Água (%)',
+                        data: data.agua,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Coleta de Esgoto (%)',
+                        data: data.esgoto,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Evolução dos Indicadores no Ceará'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao carregar evolução temporal:', error);
+    }
+}
+
+async function carregarIndicadoresPrincipais() {
+    try {
+        const response = await fetch('/api/v1/analises/indicadores-principais');
+        const data = await response.json();
+        
+        const container = document.getElementById('indicadores-principais');
+        container.innerHTML = '';
+        
+        Object.entries(data).forEach(([indicador, valor]) => {
+            const card = document.createElement('div');
+            card.className = 'indicador-card';
+            card.innerHTML = `
+                <h3>${formatarNomeIndicador(indicador)}</h3>
+                <p class="valor">${(valor * 100).toFixed(1)}%</p>
+            `;
+            container.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar indicadores principais:', error);
+    }
+}
+
+async function carregarMunicipios() {
+    try {
+        const response = await fetch('/api/v1/municipios/');
+        const municipios = await response.json();
+        
+        const select1 = document.getElementById('municipio1');
+        const select2 = document.getElementById('municipio2');
+        
+        municipios.forEach(municipio => {
+            const option1 = new Option(municipio.nome, municipio.id_municipio);
+            const option2 = new Option(municipio.nome, municipio.id_municipio);
+            select1.add(option1);
+            select2.add(option2);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar municípios:', error);
+    }
+}
+
+document.getElementById('comparar-btn').addEventListener('click', async function() {
+    const municipio1 = document.getElementById('municipio1').value;
+    const municipio2 = document.getElementById('municipio2').value;
+    
+    if (!municipio1 || !municipio2) {
+        alert('Selecione dois municípios para comparar');
+        return;
+    }
+    
+    try {
+        const [data1, data2] = await Promise.all([
+            fetch(`/api/v1/municipios/${municipio1}/indicadores`).then(r => r.json()),
+            fetch(`/api/v1/municipios/${municipio2}/indicadores`).then(r => r.json())
+        ]);
+        
+        const container = document.getElementById('resultado-comparacao');
+        container.innerHTML = `
+            <div class="comparacao-grid">
+                <div class="municipio-card">
+                    <h3>${data1.nome_municipio}</h3>
+                    <p>Água: ${(data1.indice_atendimento_agua * 100).toFixed(1)}%</p>
+                    <p>Esgoto: ${(data1.indice_coleta_esgoto * 100).toFixed(1)}%</p>
+                    <p>Tratamento: ${(data1.indice_tratamento_esgoto * 100).toFixed(1)}%</p>
+                </div>
+                <div class="municipio-card">
+                    <h3>${data2.nome_municipio}</h3>
+                    <p>Água: ${(data2.indice_atendimento_agua * 100).toFixed(1)}%</p>
+                    <p>Esgoto: ${(data2.indice_coleta_esgoto * 100).toFixed(1)}%</p>
+                    <p>Tratamento: ${(data2.indice_tratamento_esgoto * 100).toFixed(1)}%</p>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Erro ao comparar municípios:', error);
+    }
+});
+
+function formatarNomeIndicador(indicador) {
+    const nomes = {
+        'indice_atendimento_agua': 'Atendimento de Água',
+        'indice_coleta_esgoto': 'Coleta de Esgoto',
+        'indice_tratamento_esgoto': 'Tratamento de Esgoto',
+        'indice_perda_faturamento': 'Perda de Faturamento'
+    };
+    return nomes[indicador] || indicador;
+}
+</script>
+
+<style>
+.ranking-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.ranking-card {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--muted-border-color);
+    border-radius: 0.5rem;
+    background: var(--card-background-color);
+}
+
+.ranking-position {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary);
+    margin-right: 1rem;
+    min-width: 2rem;
+}
+
+.ranking-info h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.ranking-info p {
+    margin: 0.25rem 0 0 0;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+.indicadores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.indicador-card {
+    text-align: center;
+    padding: 1rem;
+    border: 1px solid var(--muted-border-color);
+    border-radius: 0.5rem;
+    background: var(--card-background-color);
+}
+
+.indicador-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: var(--muted-color);
+}
+
+.indicador-card .valor {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary);
+    margin: 0;
+}
+
+.comparativo-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 1rem;
+    align-items: end;
+    margin-bottom: 1rem;
+}
+
+.comparacao-resultado {
+    margin-top: 1rem;
+}
+
+.comparacao-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.municipio-card {
+    padding: 1rem;
+    border: 1px solid var(--muted-border-color);
+    border-radius: 0.5rem;
+    background: var(--card-background-color);
+    text-align: center;
+}
+
+.municipio-card h3 {
+    margin: 0 0 1rem 0;
+    color: var(--primary);
+}
+
+.municipio-card p {
+    margin: 0.5rem 0;
+}
+
+.loading {
+    text-align: center;
+    color: var(--muted-color);
+    padding: 2rem;
+}
+</style>
+{% endblock %} 
