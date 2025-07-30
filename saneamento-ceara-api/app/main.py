@@ -33,10 +33,16 @@ import os
 environment = os.getenv("ENVIRONMENT", "development")
 
 if environment == "production":
-    # Em produção, permitir apenas domínios específicos
+    # Em produção, permitir domínios específicos incluindo localhost para desenvolvimento
     allowed_origins = [
         "https://saneamento-ceara-api.onrender.com",
-        "https://*.onrender.com"
+        "https://*.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080"
     ]
 else:
     # Em desenvolvimento, permitir todos os domínios
