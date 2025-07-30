@@ -1,375 +1,326 @@
-# API Analítica de Saneamento do Ceará com Dashboard Interativo
+# API de Análise de Saneamento do Ceará
 
-API RESTful completa para análise e consulta de dados do Sistema Nacional de Informações sobre Saneamento (SNIS) específicos do estado do Ceará, incluindo um dashboard interativo moderno.
+API RESTful para análise de dados de saneamento básico no Ceará baseada no SNIS (Sistema Nacional de Informações sobre Saneamento).
 
-## 📋 Descrição
+## 🚀 Status do Projeto
 
-Esta aplicação web completa fornece:
-- **API RESTful** para consultar e analisar dados de saneamento básico dos 184 municípios do Ceará
-- **Dashboard Interativo** com visualizações gráficas e análises em tempo real
-- **Modelo de Dados Avançado** com 5 entidades bem estruturadas
-- **Análises Complexas** de sustentabilidade, recursos hídricos e indicadores de desempenho
+✅ **Refatoração Completa**: API totalmente refatorada e funcionando
+- ✅ Separação da camada web (Dashboard) da API
+- ✅ Schemas Pydantic melhorados com validações rigorosas
+- ✅ Sistema de filtros avançados implementado
+- ✅ Endpoints CRUD completos para todas as 5 entidades
+- ✅ Sistema de logs detalhado implementado
+- ✅ Migrações de banco de dados configuradas
+- ✅ Script de gerenciamento criado
 
-## 🏗️ Estrutura do Projeto
+## 📊 Entidades da API
+
+A API gerencia 5 entidades principais:
+
+1. **Municípios** (`/api/v1/municipios/`)
+   - Dados demográficos e informações básicas dos municípios do Ceará
+   - Filtros: nome, população (min/max), ordenação customizada
+
+2. **Prestadores de Serviço** (`/api/v1/prestadores/`)
+   - Empresas e organizações que prestam serviços de saneamento
+   - Filtros: nome, sigla, natureza jurídica
+
+3. **Indicadores de Desempenho** (`/api/v1/indicadores/`)
+   - Métricas anuais de desempenho do saneamento
+   - Filtros: ano, município, prestador, ordenação
+
+4. **Recursos Hídricos** (`/api/v1/recursos-hidricos/`)
+   - Dados sobre produção e consumo de água
+   - Filtros: volume, indicador relacionado
+
+5. **Financeiro** (`/api/v1/financeiro/`)
+   - Informações financeiras e de investimento
+   - Filtros: receita, indicador relacionado
+
+## 🛠️ Instalação e Configuração
+
+### Pré-requisitos
+
+- Python 3.8+
+- Docker e Docker Compose
+- Git
+
+### Configuração Rápida
+
+1. **Clone o repositório**:
+   ```bash
+   git clone <url-do-repositorio>
+   cd saneamento-ceara-api
+   ```
+
+2. **Configure o projeto** (automático):
+   ```bash
+   python scripts/manage.py setup
+   ```
+
+3. **Inicie a API**:
+   ```bash
+   python scripts/manage.py start
+   ```
+
+### Configuração Manual
+
+1. **Crie o ambiente virtual**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # Linux/Mac
+   # ou
+   venv\Scripts\activate     # Windows
+   ```
+
+2. **Instale as dependências**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Inicie o banco de dados**:
+   ```bash
+   docker-compose up -d db
+   ```
+
+4. **Execute as migrações**:
+   ```bash
+   alembic upgrade head
+   ```
+
+5. **Inicie a API**:
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+## 📋 Comandos de Gerenciamento
+
+O projeto inclui um script de gerenciamento para facilitar operações comuns:
+
+```bash
+# Configuração completa do projeto
+python scripts/manage.py setup
+
+# Iniciar API
+python scripts/manage.py start
+
+# Parar banco de dados
+python scripts/manage.py stop
+
+# Executar migrações
+python scripts/manage.py migrate
+
+# Verificar saúde da API
+python scripts/manage.py health
+
+# Visualizar logs
+python scripts/manage.py logs
+
+# Gerenciar banco de dados
+python scripts/manage.py db-start
+python scripts/manage.py db-stop
+```
+
+## 🔗 Endpoints da API
+
+### Endpoints Principais
+
+- `GET /` - Informações da API
+- `GET /health` - Verificação de saúde
+- `GET /docs` - Documentação Swagger
+- `GET /redoc` - Documentação ReDoc
+
+### Endpoints de Entidades
+
+#### Municípios
+- `GET /api/v1/municipios/` - Listar municípios
+- `GET /api/v1/municipios/{id}` - Obter município específico
+- `POST /api/v1/municipios/` - Criar município
+- `PUT /api/v1/municipios/{id}` - Atualizar município
+- `DELETE /api/v1/municipios/{id}` - Excluir município
+- `GET /api/v1/municipios/{id}/indicadores` - Indicadores do município
+
+#### Prestadores
+- `GET /api/v1/prestadores/` - Listar prestadores
+- `GET /api/v1/prestadores/{id}` - Obter prestador específico
+- `GET /api/v1/prestadores/sigla/{sigla}` - Buscar por sigla
+- `POST /api/v1/prestadores/` - Criar prestador
+- `PUT /api/v1/prestadores/{id}` - Atualizar prestador
+- `DELETE /api/v1/prestadores/{id}` - Excluir prestador
+- `GET /api/v1/prestadores/{id}/indicadores` - Indicadores do prestador
+
+#### Indicadores
+- `GET /api/v1/indicadores/` - Listar indicadores
+- `GET /api/v1/indicadores/{id}` - Obter indicador específico
+- `POST /api/v1/indicadores/` - Criar indicador
+- `PUT /api/v1/indicadores/{id}` - Atualizar indicador
+- `DELETE /api/v1/indicadores/{id}` - Excluir indicador
+- `GET /api/v1/indicadores/{id}/recursos-hidricos` - Recursos hídricos relacionados
+- `GET /api/v1/indicadores/{id}/financeiro` - Dados financeiros relacionados
+
+#### Recursos Hídricos
+- `GET /api/v1/recursos-hidricos/` - Listar recursos hídricos
+- `GET /api/v1/recursos-hidricos/{id}` - Obter recurso específico
+- `GET /api/v1/recursos-hidricos/indicador/{indicador_id}` - Por indicador
+- `POST /api/v1/recursos-hidricos/` - Criar recurso
+- `PUT /api/v1/recursos-hidricos/{id}` - Atualizar recurso
+- `DELETE /api/v1/recursos-hidricos/{id}` - Excluir recurso
+- `GET /api/v1/recursos-hidricos/estatisticas/volume-agua` - Estatísticas
+
+#### Financeiro
+- `GET /api/v1/financeiro/` - Listar dados financeiros
+- `GET /api/v1/financeiro/{id}` - Obter dados específicos
+- `GET /api/v1/financeiro/indicador/{indicador_id}` - Por indicador
+- `POST /api/v1/financeiro/` - Criar dados financeiros
+- `PUT /api/v1/financeiro/{id}` - Atualizar dados
+- `DELETE /api/v1/financeiro/{id}` - Excluir dados
+- `GET /api/v1/financeiro/estatisticas/receitas-despesas` - Estatísticas
+- `GET /api/v1/financeiro/sustentabilidade/{ano}` - Análise de sustentabilidade
+
+### Endpoints de Análise
+- `GET /api/v1/analises/ranking/{indicador}` - Ranking de municípios
+- `GET /api/v1/analises/evolucao/{municipio_id}` - Evolução temporal
+- `GET /api/v1/analises/comparativo/{ano}` - Comparativo anual
+- `GET /api/v1/analises/sustentabilidade/{ano}` - Análise de sustentabilidade
+- `GET /api/v1/analises/recursos-hidricos/{ano}` - Análise de recursos hídricos
+
+## 🔍 Filtros Disponíveis
+
+### Municípios
+- `nome` - Filtrar por nome (busca parcial)
+- `populacao_min` - População mínima
+- `populacao_max` - População máxima
+- `order_by` - Campo para ordenação
+- `order_direction` - Direção da ordenação (asc/desc)
+
+### Indicadores
+- `ano_inicio` - Ano inicial do período
+- `ano_fim` - Ano final do período
+- `municipio_id` - Filtrar por município
+- `prestador_id` - Filtrar por prestador
+- `order_by` - Campo para ordenação
+- `order_direction` - Direção da ordenação
+
+### Prestadores
+- `nome` - Filtrar por nome
+- `sigla` - Filtrar por sigla
+- `natureza_juridica` - Filtrar por natureza jurídica
+- `order_by` - Campo para ordenação
+- `order_direction` - Direção da ordenação
+
+## 📝 Logs
+
+A aplicação gera logs detalhados em:
+
+- `logs/api.log` - Logs gerais da aplicação
+- `logs/errors.log` - Logs de erros
+
+Os logs incluem:
+- Requisições HTTP com duração
+- Operações de banco de dados
+- Informações de performance
+- Erros e exceções
+
+## 🗄️ Banco de Dados
+
+- **Sistema**: PostgreSQL 14
+- **Container**: Docker
+- **Migrações**: Alembic
+- **ORM**: SQLAlchemy
+
+### Estrutura das Tabelas
+
+1. **municipios** - Dados dos municípios
+2. **prestadores_servico** - Prestadores de serviço
+3. **indicadores_desempenho_anuais** - Indicadores de desempenho
+4. **recursos_hidricos_anuais** - Dados de recursos hídricos
+5. **financeiro_anuais** - Dados financeiros
+
+## 🔧 Desenvolvimento
+
+### Estrutura do Projeto
 
 ```
 saneamento-ceara-api/
-├── app/                    # Código principal da aplicação
+├── app/
 │   ├── __init__.py
-│   ├── main.py            # Configuração FastAPI + Dashboard
-│   ├── database.py        # Configuração do banco de dados
-│   ├── models.py          # Modelos SQLAlchemy (5 entidades)
-│   ├── schemas.py         # Schemas Pydantic
-│   ├── crud.py            # Operações CRUD
-│   ├── routers/           # Rotas da API
-│   │   ├── __init__.py
-│   │   ├── municipios.py  # Endpoints de municípios
-│   │   ├── analises.py    # Endpoints de análises
-│   │   └── dashboard.py   # Rotas do dashboard HTML
-│   ├── templates/         # Templates HTML do dashboard
-│   │   ├── base.html      # Template base
-│   │   ├── index.html     # Página inicial
-│   │   ├── analises.html  # Página de análises
-│   │   └── municipio.html # Página de município
-│   └── static/            # Arquivos estáticos
-│       ├── css/
-│       │   └── style.css  # Estilos customizados
-│       └── js/
-│           └── main.js    # JavaScript do dashboard
-├── data/                  # Dados processados
-│   └── dados_snis_ceara_limpos.csv
-├── scripts/               # Scripts de processamento
-│   ├── extract_data.py    # Extração e processamento de dados
-│   ├── load_data.py       # Carregamento no banco de dados
-│   └── analise_limpeza_dados.py # Análise e limpeza de dados
-├── docs/                  # Documentação
-│   ├── ANALISE_ABRANGENTE_SNIS_CEARA.md
-│   └── RESUMO_EXECUTIVO_SNIS_CEARA.md
-├── alembic/               # Migrações do banco de dados
-├── requirements.txt       # Dependências Python
-├── docker-compose.yml     # Configuração Docker
-├── Dockerfile            # Imagem Docker
-└── README.md             # Este arquivo
+│   ├── main.py              # Aplicação principal
+│   ├── database.py          # Configuração do banco
+│   ├── models.py            # Modelos SQLAlchemy
+│   ├── schemas.py           # Schemas Pydantic
+│   ├── crud.py              # Operações CRUD
+│   ├── logging_config.py    # Configuração de logs
+│   └── routers/             # Endpoints da API
+│       ├── municipios.py
+│       ├── prestadores.py
+│       ├── indicadores.py
+│       ├── recursos_hidricos.py
+│       ├── financeiro.py
+│       └── analises.py
+├── alembic/                 # Migrações
+├── logs/                    # Arquivos de log
+├── scripts/                 # Scripts de gerenciamento
+├── docker-compose.yml       # Configuração Docker
+├── requirements.txt         # Dependências Python
+└── README.md               # Este arquivo
 ```
 
-## 🗄️ Modelo de Dados (5 Entidades)
+### Validações Implementadas
 
-### 1. **Municipio** (Dimensão Geográfica)
-- `id_municipio`, `nome`, `sigla_uf`, `populacao_urbana_estimada_2022`, `populacao_total_estimada_2022`, `quantidade_sedes_agua`, `quantidade_sedes_esgoto`, `nome_prestador_predominante`
+- **Campos obrigatórios** com validação de tipo
+- **Ranges numéricos** (ge, le, gt, lt)
+- **Tamanhos de string** (min_length, max_length)
+- **Padrões regex** para formatos específicos
+- **Validações customizadas** (ex: sigla UF apenas CE)
 
-### 2. **PrestadorServico** (Dimensão Organizacional)
-- `id`, `sigla`, `nome`, `natureza_juridica`, `total_investido_historico`, `media_arrecadacao_anual`, `quantidade_municipios_atendidos`, `ano_primeiro_registro`
+## 🚀 Deploy
 
-### 3. **IndicadoresDesempenhoAnual** (Tabela Fato Principal)
-- `id`, `ano`, `municipio_id`, `prestador_id`, `populacao_atendida_agua`, `populacao_atendida_esgoto`, `indice_atendimento_agua`, `indice_coleta_esgoto`, `indice_tratamento_esgoto`, `indice_perda_faturamento`
+### Produção
 
-### 4. **RecursosHidricosAnual** (Detalhes Operacionais)
-- `id`, `indicador_id`, `volume_agua_produzido`, `volume_agua_consumido`, `volume_agua_faturado`, `volume_esgoto_coletado`, `volume_esgoto_tratado`, `consumo_eletrico_sistemas_agua`
+Para deploy em produção:
 
-### 5. **FinanceiroAnual** (Detalhes Financeiros)
-- `id`, `indicador_id`, `receita_operacional_total`, `despesa_exploracao`, `despesa_pessoal`, `despesa_energia`, `despesa_total_servicos`, `investimento_total_prestador`, `credito_a_receber`
-
-## 🚀 Como Rodar o Projeto
-
-### ⚡ **Método Rápido (Recomendado) - Docker**
-
-O projeto está configurado para rodar facilmente com Docker. Siga estes passos:
-
-1. **Clone o repositório e entre na pasta**
-```bash
-git clone <url-do-repositorio>
-cd saneamento-ceara-api
-```
-
-2. **Execute com Docker Compose**
-```bash
-# Subir os containers
-docker-compose up --build -d
-
-# Verificar se estão rodando
-docker-compose ps
-```
-
-3. **Execute as migrações do banco de dados**
-```bash
-docker-compose exec api alembic upgrade head
-```
-
-4. **Carregue os dados**
-```bash
-docker-compose exec api python scripts/load_data.py
-```
-
-5. **Acesse o dashboard**
-- **Dashboard Principal:** http://localhost:8000/dashboard
-- **API Documentation:** http://localhost:8000/docs
-
-### 🔧 **Método Local (Desenvolvimento)**
-
-Se preferir rodar localmente:
-
-1. **Pré-requisitos**
-```bash
-# Instale PostgreSQL
-sudo apt-get install postgresql postgresql-contrib
-
-# Crie o banco de dados
-sudo -u postgres createdb saneamento_ceara
-```
-
-2. **Configure o ambiente Python**
-```bash
-# Crie ambiente virtual
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate     # Windows
-
-# Instale dependências
-pip install -r requirements.txt
-```
-
-3. **Configure as variáveis de ambiente**
-```bash
-# Copie o arquivo de exemplo
-cp env.example .env
-
-# Edite o arquivo .env com suas configurações
-# DATABASE_URL=postgresql://usuario:senha@localhost/saneamento_ceara
-```
-
-4. **Execute as migrações**
-```bash
-alembic upgrade head
-```
-
-5. **Carregue os dados**
-```bash
-python scripts/load_data.py
-```
-
-6. **Execute a aplicação**
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-## 🌐 Como Acessar
-
-### Dashboard Interativo
-- **Página Inicial:** `http://localhost:8000/dashboard/`
-- **Lista de Municípios:** `http://localhost:8000/dashboard/municipios`
-- **Detalhes de Município:** `http://localhost:8000/dashboard/municipios/{id}`
-- **Análises:** `http://localhost:8000/dashboard/analises`
-
-### API RESTful
-- **Informações da API:** `http://localhost:8000/api/v1`
-- **Documentação Swagger:** `http://localhost:8000/docs`
-- **Documentação ReDoc:** `http://localhost:8000/redoc`
-- **Health Check:** `http://localhost:8000/health`
-
-## 🔌 Endpoints da API
-
-### Municípios
-- `GET /api/v1/municipios/` - Lista todos os municípios
-- `GET /api/v1/municipios/{id}` - Dados de um município específico
-- `GET /api/v1/municipios/search?q={termo}` - Busca por nome
-- `GET /api/v1/municipios/{id}/indicadores` - Indicadores de um município
-- `GET /api/v1/municipios/{id}/evolucao` - Evolução temporal
-- `GET /api/v1/municipios/{id}/recursos-hidricos` - Recursos hídricos
-- `GET /api/v1/municipios/{id}/indicadores-financeiros` - Dados financeiros
-
-### Análises
-- `GET /api/v1/analises/ranking?indicador={tipo}&limit={n}` - Ranking por indicador
-- `GET /api/v1/analises/evolucao?municipio_id={id}` - Evolução de município
-- `GET /api/v1/analises/indicadores-principais` - Médias dos indicadores
-- `GET /api/v1/analises/evolucao-temporal` - Evolução temporal geral
-- `GET /api/v1/analises/comparativo` - Comparação entre municípios
-- `GET /api/v1/analises/sustentabilidade-financeira` - Análise de sustentabilidade
-- `GET /api/v1/analises/eficiencia-hidrica` - Eficiência hídrica
-
-## 📊 Funcionalidades do Dashboard
-
-### 📈 Visualizações Interativas
-- **Gráficos de Linha** - Evolução temporal dos indicadores
-- **Gráficos de Barras** - Comparação entre municípios
-- **Gráficos de Pizza** - Distribuição de recursos financeiros
-- **Cards de Indicadores** - Métricas principais em tempo real
-
-### 🏆 Rankings e Comparações
-- **Top 5 Municípios** - Melhores desempenhos por indicador
-- **Posicionamento** - Ranking específico de cada município
-- **Comparativo** - Análise lado a lado entre municípios
-
-### 📊 Análises Avançadas
-- **Sustentabilidade Financeira** - Receitas vs Despesas
-- **Eficiência Hídrica** - Análise de perdas e eficiência
-- **Evolução Temporal** - Tendências ao longo dos anos
-- **Indicadores Principais** - Médias estaduais
-
-## 🛠️ Comandos Úteis
+1. Configure variáveis de ambiente
+2. Use um servidor WSGI (Gunicorn)
+3. Configure proxy reverso (Nginx)
+4. Configure SSL/TLS
+5. Configure backup do banco de dados
 
 ### Docker
+
 ```bash
-# Subir containers
+# Build da imagem
+docker build -t saneamento-ceara-api .
+
+# Executar com Docker Compose
 docker-compose up -d
-
-# Parar containers
-docker-compose down
-
-# Ver logs
-docker-compose logs api
-
-# Reconstruir
-docker-compose up --build -d
-
-# Executar comando no container
-docker-compose exec api python scripts/load_data.py
-```
-
-### Banco de Dados
-```bash
-# Executar migrações
-docker-compose exec api alembic upgrade head
-
-# Carregar dados
-docker-compose exec api python scripts/load_data.py
-
-# Verificar dados carregados
-docker-compose exec api python -c "from app.database import engine; from app.models import IndicadoresDesempenhoAnual; from sqlalchemy.orm import sessionmaker; Session = sessionmaker(bind=engine); session = Session(); print(f'Total de registros: {session.query(IndicadoresDesempenhoAnual).count()}')"
-```
-
-### Desenvolvimento
-```bash
-# Instalar dependências
-pip install -r requirements.txt
-
-# Executar testes
-pytest
-
-# Formatar código
-black app/
-
-# Verificar tipos
-mypy app/
-```
-
-## 🛠️ Tecnologias Utilizadas
-
-### Backend
-- **FastAPI** - Framework web moderno e rápido
-- **SQLAlchemy** - ORM para banco de dados
-- **PostgreSQL** - Banco de dados relacional
-- **Alembic** - Migrações de banco de dados
-- **Pydantic** - Validação de dados
-- **Jinja2** - Templates HTML
-
-### Frontend
-- **Pico.css** - Framework CSS minimalista
-- **Chart.js** - Gráficos interativos
-- **JavaScript Vanilla** - Funcionalidades dinâmicas
-
-### Infraestrutura
-- **Docker** - Containerização
-- **Docker Compose** - Orquestração de containers
-- **Uvicorn** - Servidor ASGI
-
-## 📈 Principais Indicadores Analisados
-
-- **Atendimento de Água** - Percentual da população atendida
-- **Coleta de Esgoto** - Percentual da população com coleta
-- **Tratamento de Esgoto** - Percentual do esgoto tratado
-- **Perda de Faturamento** - Índice de perdas na distribuição
-- **Recursos Hídricos** - Volumes produzidos, consumidos e faturados
-- **Indicadores Financeiros** - Receitas, despesas e investimentos
-
-## 🔧 Troubleshooting
-
-### Problemas Comuns
-
-1. **Erro de conexão com banco de dados**
-```bash
-# Verificar se PostgreSQL está rodando
-docker-compose logs db
-
-# Recriar containers
-docker-compose down -v
-docker-compose up --build -d
-```
-
-2. **Dados não carregados**
-```bash
-# Verificar se o arquivo CSV existe
-ls -la data/
-
-# Executar carregamento novamente
-docker-compose exec api python scripts/load_data.py
-```
-
-3. **Erro de migração**
-```bash
-# Resetar migrações
-docker-compose exec api alembic downgrade base
-docker-compose exec api alembic upgrade head
-```
-
-4. **Dashboard não carrega**
-```bash
-# Verificar logs da API
-docker-compose logs api
-
-# Verificar se Jinja2 está instalado
-docker-compose exec api pip list | grep jinja
 ```
 
 ## 📚 Documentação
 
-- **API Documentation:** `http://localhost:8000/docs`
-- **ReDoc:** `http://localhost:8000/redoc`
-- **Documentação Completa:** `docs/`
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **README Refatorado**: [README_REFATORADO.md](README_REFATORADO.md)
 
-## 🎯 Status do Projeto
+## 🤝 Contribuição
 
-### ✅ **Funcionalidades Implementadas**
-- ✅ API RESTful completa
-- ✅ Dashboard interativo funcionando
-- ✅ Banco de dados populado (2.257 registros)
-- ✅ Rankings e análises funcionando
-- ✅ Gráficos interativos
-- ✅ Templates responsivos
-- ✅ Docker configurado
+1. Fork o projeto
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
 
-### 📊 **Dados Disponíveis**
-- **184 municípios** do Ceará
-- **Dados de 2022** (ano mais recente)
-- **5 indicadores principais** de saneamento
-- **Análises comparativas** entre municípios
+## 📄 Licença
 
-## 📝 Changelog
+Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
 
-### v2.1.0 - Correções e Melhorias
-- ✅ Corrigido parsing de JSON no frontend
-- ✅ Corrigida estrutura de resposta da API
-- ✅ Melhorado tratamento de valores NaN/None
-- ✅ Corrigido carregamento de dados
-- ✅ Adicionado Jinja2 para templates
-- ✅ Dashboard 100% funcional
+## 📞 Suporte
 
-### v2.0.0 - Dashboard Interativo
-- ✅ Dashboard HTML completo com Pico.css
-- ✅ Gráficos interativos com Chart.js
-- ✅ Modelo de dados atualizado (5 entidades)
-- ✅ Análises avançadas de sustentabilidade
-- ✅ Eficiência hídrica e recursos financeiros
-- ✅ Templates responsivos e modernos
-- ✅ JavaScript para funcionalidades dinâmicas
+Para dúvidas ou problemas:
 
-### v1.0.0 - API Base
-- ✅ API FastAPI funcional
-- ✅ Dados do SNIS processados e limpos
-- ✅ Endpoints para consultas e análises
-- ✅ Documentação completa
-- ✅ Docker configurado
+1. Verifique a documentação
+2. Consulte os logs da aplicação
+3. Abra uma issue no repositório
 
 ---
 
-**🎉 O projeto está 100% funcional e pronto para uso!**
+**Desenvolvido com ❤️ para análise de dados de saneamento no Ceará**

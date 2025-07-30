@@ -105,73 +105,74 @@ def obter_evolucao_temporal(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
-@router.get("/comparativo", response_model=schemas.ComparativoResponse)
-def obter_comparativo_municipios(
-    ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
-    ids_municipios: Optional[str] = Query(None, description="Lista de códigos IBGE dos municípios separados por vírgula"),
-    db: Session = Depends(get_db)
-):
-    """
-    Compara os dados de múltiplos municípios em um ano específico.
-    """
-    try:
-        if ano is None:
-            ano = crud.get_ultimo_ano_dados(db)
-        
-        if ids_municipios:
-            ids_list = [id.strip() for id in ids_municipios.split(",")]
-            # Implementar filtro por municípios específicos se necessário
-            pass
-        
-        municipios_data = crud.get_municipios_comparacao(db=db, ano=ano)
-        
-        return schemas.ComparativoResponse(
-            ano=ano,
-            municipios=municipios_data
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+# Endpoints comentados - funções não implementadas no CRUD
+# @router.get("/comparativo", response_model=schemas.ComparativoResponse)
+# def obter_comparativo_municipios(
+#     ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
+#     ids_municipios: Optional[str] = Query(None, description="Lista de códigos IBGE dos municípios separados por vírgula"),
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Compara os dados de múltiplos municípios em um ano específico.
+#     """
+#     try:
+#         if ano is None:
+#             ano = crud.get_ultimo_ano_dados(db)
+#         
+#         if ids_municipios:
+#             ids_list = [id.strip() for id in ids_municipios.split(",")]
+#             # Implementar filtro por municípios específicos se necessário
+#             pass
+#         
+#         municipios_data = crud.get_municipios_comparacao(db=db, ano=ano)
+#         
+#         return schemas.ComparativoResponse(
+#             ano=ano,
+#             municipios=municipios_data
+#         )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
-@router.get("/sustentabilidade-financeira", response_model=schemas.SustentabilidadeResponse)
-def obter_sustentabilidade_financeira(
-    ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
-    db: Session = Depends(get_db)
-):
-    """
-    Retorna análise de sustentabilidade financeira dos municípios.
-    """
-    try:
-        if ano is None:
-            ano = crud.get_ultimo_ano_dados(db)
-        
-        dados = crud.get_analise_sustentabilidade_financeira(db=db, ano=ano)
-        
-        return schemas.SustentabilidadeResponse(
-            ano=ano,
-            sustentaveis=dados["sustentaveis"],
-            insustentaveis=dados["insustentaveis"]
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+# @router.get("/sustentabilidade-financeira", response_model=schemas.SustentabilidadeResponse)
+# def obter_sustentabilidade_financeira(
+#     ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Retorna análise de sustentabilidade financeira dos municípios.
+#     """
+#     try:
+#         if ano is None:
+#             ano = crud.get_ultimo_ano_dados(db)
+#         
+#         dados = crud.get_analise_sustentabilidade_financeira(db=db, ano=ano)
+#         
+#         return schemas.SustentabilidadeResponse(
+#             ano=ano,
+#             sustentaveis=dados["sustentaveis"],
+#             insustentaveis=dados["insustentaveis"]
+#         )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
-@router.get("/eficiencia-hidrica", response_model=schemas.EficienciaHidricaResponse)
-def obter_eficiencia_hidrica(
-    ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
-    db: Session = Depends(get_db)
-):
-    """
-    Retorna análise de eficiência hídrica dos municípios.
-    """
-    try:
-        if ano is None:
-            ano = crud.get_ultimo_ano_dados(db)
-        
-        dados = crud.get_analise_eficiencia_hidrica(db=db, ano=ano)
-        
-        return schemas.EficienciaHidricaResponse(
-            ano=ano,
-            mais_eficientes=dados["mais_eficientes"],
-            menos_eficientes=dados["menos_eficientes"]
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}") 
+# @router.get("/eficiencia-hidrica", response_model=schemas.EficienciaHidricaResponse)
+# def obter_eficiencia_hidrica(
+#     ano: Optional[int] = Query(None, description="Ano de referência (padrão: mais recente)"),
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Retorna análise de eficiência hídrica dos municípios.
+#     """
+#     try:
+#         if ano is None:
+#             ano = crud.get_ultimo_ano_dados(db)
+#         
+#         dados = crud.get_analise_eficiencia_hidrica(db=db, ano=ano)
+#         
+#         return schemas.EficienciaHidricaResponse(
+#             ano=ano,
+#             mais_eficientes=dados["mais_eficientes"],
+#             menos_eficientes=dados["menos_eficientes"]
+#         )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}") 

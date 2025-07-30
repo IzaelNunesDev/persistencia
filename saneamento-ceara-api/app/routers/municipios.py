@@ -1,225 +1,120 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from app import crud, schemas, models
 from app.database import get_db
+from app import crud, schemas
 
 router = APIRouter(prefix="/municipios", tags=["municipios"])
 
-@router.get("/", response_model=List[schemas.Municipio])
-def listar_municipios(
+@router.get("/", response_model=List[schemas.MunicipioList])
+def read_municipios(
     skip: int = Query(0, ge=0, description="Número de registros para pular"),
-    limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros"),
+    limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros a retornar"),
     nome: Optional[str] = Query(None, description="Filtrar por nome do município"),
+    populacao_min: Optional[int] = Query(None, ge=0, description="População mínima"),
+    populacao_max: Optional[int] = Query(None, ge=0, description="População máxima"),
+    order_by: Optional[str] = Query(None, description="Campo para ordenação"),
+    order_direction: str = Query("asc", pattern="^(asc|desc)$", description="Direção da ordenação"),
     db: Session = Depends(get_db)
 ):
     """
-    Lista municípios com paginação e filtros opcionais.
-    
-    - **skip**: Número de registros para pular (para paginação)
-    - **limit**: Número máximo de registros retornados
-    - **nome**: Filtrar por nome do município (busca parcial)
+    Lista todos os municípios com filtros opcionais.
     """
     municipios = crud.get_municipios(
-        db=db, 
+        db, 
         skip=skip, 
         limit=limit, 
-        nome=nome
-    )
-    return municipios
-
-@router.get("/search")
-def buscar_municipios(
-    q: str = Query(..., description="Termo de busca"),
-    limit: int = Query(10, ge=1, le=50, description="Número máximo de resultados"),
-    db: Session = Depends(get_db)
-):
-    """
-    Busca municípios por nome (busca parcial).
-    
-    - **q**: Termo de busca
-    - **limit**: Número máximo de resultados
-    """
-    municipios = crud.get_municipios(
-        db=db,
-        skip=0,
-        limit=limit,
-        nome=q
+        nome=nome,
+        populacao_min=populacao_min,
+        populacao_max=populacao_max,
+        order_by=order_by,
+        order_direction=order_direction
     )
     return municipios
 
 @router.get("/{id_municipio}", response_model=schemas.Municipio)
-def obter_municipio(
-    id_municipio: str,
-    db: Session = Depends(get_db)
-):
+def read_municipio(id_municipio: str, db: Session = Depends(get_db)):
     """
-    Obtém dados detalhados de um município específico.
-    
-    - **id_municipio**: Código IBGE do município
+    Obtém um município específico por ID.
     """
-    municipio = crud.get_municipio(db=db, id_municipio=id_municipio)
-    if not municipio:
+    municipio = crud.get_municipio(db, id_municipio=id_municipio)
+    if municipio is None:
         raise HTTPException(status_code=404, detail="Município não encontrado")
-    
     return municipio
 
-@router.get("/{id_municipio}/indicadores", response_model=List[schemas.IndicadoresDesempenho])
-def obter_indicadores_municipio(
-    id_municipio: str,
-    skip: int = Query(0, ge=0, description="Número de registros para pular"),
-    limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros"),
-    db: Session = Depends(get_db)
-):
-    """
-    Retorna a série histórica completa de indicadores de desempenho para um município.
-    
-    - **id_municipio**: Código IBGE do município
-    - **skip**: Número de registros para pular (para paginação)
-    - **limit**: Número máximo de registros retornados
-    """
-    # Verificar se o município existe
-    municipio = crud.get_municipio(db=db, id_municipio=id_municipio)
-    if not municipio:
-        raise HTTPException(status_code=404, detail="Município não encontrado")
-    
-    # Buscar dados históricos de indicadores
-    indicadores = crud.get_indicadores_municipio(
-        db=db, 
-        municipio_id=id_municipio,
-        skip=skip,
-        limit=limit
-    )
-    
-    return indicadores
-
-@router.get("/{id_municipio}/indicadores-atuais")
-def obter_indicadores_atuais_municipio(
-    id_municipio: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Retorna os indicadores mais recentes de um município.
-    
-    - **id_municipio**: Código IBGE do município
-    """
-    # Verificar se o município existe
-    municipio = crud.get_municipio(db=db, id_municipio=id_municipio)
-    if not municipio:
-        raise HTTPException(status_code=404, detail="Município não encontrado")
-    
-    # Buscar indicadores atuais
-    indicadores = crud.get_indicador_atual_municipio(
-        db=db, 
-        municipio_id=id_municipio
-    )
-    
-    if not indicadores:
-        raise HTTPException(status_code=404, detail="Nenhum indicador encontrado para este município")
-    
-    return indicadores
-
-@router.get("/{id_municipio}/evolucao")
-def obter_evolucao_municipio(
-    id_municipio: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Retorna a evolução temporal dos indicadores de um município.
-    
-    - **id_municipio**: Código IBGE do município
-    """
-    # Verificar se o município existe
-    municipio = crud.get_municipio(db=db, id_municipio=id_municipio)
-    if not municipio:
-        raise HTTPException(status_code=404, detail="Município não encontrado")
-    
-    # Buscar evolução
-    evolucao = crud.get_evolucao_indicadores(
-        db=db, 
-        municipio_id=id_municipio
-    )
-    
-    return evolucao
-
-@router.get("/{id_municipio}/recursos-hidricos")
-def obter_recursos_hidricos_municipio(
-    id_municipio: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Retorna os dados de recursos hídricos mais recentes de um município.
-    
-    - **id_municipio**: Código IBGE do município
-    """
-    # Verificar se o município existe
-    municipio = crud.get_municipio(db=db, id_municipio=id_municipio)
-    if not municipio:
-        raise HTTPException(status_code=404, detail="Município não encontrado")
-    
-    # Buscar indicadores atuais
-    indicadores = crud.get_indicador_atual_municipio(
-        db=db, 
-        municipio_id=id_municipio
-    )
-    
-    if not indicadores:
-        raise HTTPException(status_code=404, detail="Nenhum indicador encontrado para este município")
-    
-    # Buscar recursos hídricos
-    recursos = crud.get_recursos_hidricos(
-        db=db, 
-        indicador_id=indicadores.id
-    )
-    
-    if not recursos:
-        raise HTTPException(status_code=404, detail="Nenhum dado de recursos hídricos encontrado")
-    
-    return recursos
-
-@router.get("/{id_municipio}/indicadores-financeiros")
-def obter_indicadores_financeiros_municipio(
-    id_municipio: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Retorna os dados financeiros mais recentes de um município.
-    
-    - **id_municipio**: Código IBGE do município
-    """
-    # Verificar se o município existe
-    municipio = crud.get_municipio(db=db, id_municipio=id_municipio)
-    if not municipio:
-        raise HTTPException(status_code=404, detail="Município não encontrado")
-    
-    # Buscar indicadores atuais
-    indicadores = crud.get_indicador_atual_municipio(
-        db=db, 
-        municipio_id=id_municipio
-    )
-    
-    if not indicadores:
-        raise HTTPException(status_code=404, detail="Nenhum indicador encontrado para este município")
-    
-    # Buscar dados financeiros
-    financeiro = crud.get_financeiro(
-        db=db, 
-        indicador_id=indicadores.id
-    )
-    
-    if not financeiro:
-        raise HTTPException(status_code=404, detail="Nenhum dado financeiro encontrado")
-    
-    return financeiro
-
-@router.post("/", response_model=schemas.Municipio)
-def criar_municipio(
-    municipio: schemas.MunicipioCreate,
-    db: Session = Depends(get_db)
-):
+@router.post("/", response_model=schemas.Municipio, status_code=201)
+def create_municipio(municipio: schemas.MunicipioCreate, db: Session = Depends(get_db)):
     """
     Cria um novo município.
-    
-    - **municipio**: Dados do município a ser criado
     """
-    return crud.create_municipio(db=db, municipio=municipio) 
+    db_municipio = crud.get_municipio(db, id_municipio=municipio.id_municipio)
+    if db_municipio:
+        raise HTTPException(status_code=400, detail="Município já existe")
+    return crud.create_municipio(db=db, municipio=municipio)
+
+@router.put("/{id_municipio}", response_model=schemas.Municipio)
+def update_municipio(
+    id_municipio: str, 
+    municipio: schemas.MunicipioUpdate, 
+    db: Session = Depends(get_db)
+):
+    """
+    Atualiza um município existente.
+    """
+    db_municipio = crud.update_municipio(db=db, id_municipio=id_municipio, municipio=municipio)
+    if db_municipio is None:
+        raise HTTPException(status_code=404, detail="Município não encontrado")
+    return db_municipio
+
+@router.delete("/{id_municipio}", status_code=204)
+def delete_municipio(id_municipio: str, db: Session = Depends(get_db)):
+    """
+    Remove um município.
+    """
+    success = crud.delete_municipio(db=db, id_municipio=id_municipio)
+    if not success:
+        raise HTTPException(status_code=404, detail="Município não encontrado")
+
+@router.get("/{id_municipio}/indicadores", response_model=List[schemas.IndicadoresCompleto])
+def read_indicadores_municipio(
+    id_municipio: str,
+    ano_inicio: Optional[int] = Query(None, ge=1900, le=2100, description="Ano inicial"),
+    ano_fim: Optional[int] = Query(None, ge=1900, le=2100, description="Ano final"),
+    prestador_id: Optional[int] = Query(None, gt=0, description="ID do prestador"),
+    order_by: Optional[str] = Query(None, description="Campo para ordenação"),
+    order_direction: str = Query("desc", pattern="^(asc|desc)$", description="Direção da ordenação"),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtém os indicadores de desempenho de um município específico.
+    """
+    # Verificar se o município existe
+    municipio = crud.get_municipio(db, id_municipio=id_municipio)
+    if municipio is None:
+        raise HTTPException(status_code=404, detail="Município não encontrado")
+    
+    # Buscar indicadores com filtros
+    indicadores = crud.get_indicadores(
+        db,
+        municipio_id=id_municipio,
+        ano_inicio=ano_inicio,
+        ano_fim=ano_fim,
+        prestador_id=prestador_id,
+        order_by=order_by,
+        order_direction=order_direction
+    )
+    
+    # Converter para IndicadoresCompleto
+    indicadores_completos = []
+    for indicador in indicadores:
+        recursos_hidricos = crud.get_recursos_hidricos_by_indicador(db, indicador.id)
+        financeiro = crud.get_financeiro_by_indicador(db, indicador.id)
+        
+        indicador_completo = schemas.IndicadoresCompleto(
+            **indicador.__dict__,
+            recursos_hidricos=recursos_hidricos,
+            financeiro=financeiro
+        )
+        indicadores_completos.append(indicador_completo)
+    
+    return indicadores_completos 
